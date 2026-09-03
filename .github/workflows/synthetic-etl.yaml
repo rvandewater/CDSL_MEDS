@@ -1,0 +1,29 @@
+name: Synthetic ETL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, "release/*", "dev", "feat/*"]
+
+jobs:
+  synthetic-etl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Generate and extract synthetic data
+        run: |
+          uv pip install git+https://github.com/rvandewater/MESSY_synth.git
+          uv run MESSY-synth ./src/Zigong_MEDS/event_configs.yaml -o raw_synthetic/ --explain
+          uv run meds-extract-run spec=Zigong output_dir=zigong_meds_synth/ \
+            input_dir=raw_synthetic/ do_download=false
