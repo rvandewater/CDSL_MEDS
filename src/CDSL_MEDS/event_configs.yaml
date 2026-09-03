@@ -13,365 +13,362 @@ patient_01:
   hospital_admission:
     code: HOSPITAL_ADMISSION
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
-    
+
   hospital_discharge:
     code: f"HOSPITAL_DISCHARGE//{$destin_discharge ?? 'UNKNOWN'}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
-    
+
   icu_admission:
     code: ICU_ADMISSION
     time: $icu_date_in::?"%Y-%m-%d %H:%M:%S%.f"
-    
+
   icu_discharge:
     code: ICU_DISCHARGE
     time: $icu_date_out::?"%Y-%m-%d %H:%M:%S%.f"
-    
+
   age_at_admission:
     code: AGE_AT_ADMISSION
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $age::?float64
-    
+
   sex:
     code: f"SEX//{$sex}"
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
-    
+
   inpatient_diagnosis:
     code: f"INPATIENT_DIAGNOSIS//{$diag_inpat}"
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
-    
+
   emergency_visit:
     code: EMERGENCY_DEPARTMENT_VISIT
     time: f"{$admission_date_emerg[0:10]} {$time_admission_emerg}"::?"%Y-%m-%d %H:%M:%S"
-    
+
   emergency_department:
     code: f"EMERGENCY_DEPARTMENT//{$department_emerg}"
     time: f"{$admission_date_emerg[0:10]} {$time_admission_emerg}"::?"%Y-%m-%d %H:%M:%S"
-    
+
   emergency_diagnosis:
     code: f"EMERGENCY_DIAGNOSIS//{$diag_emerg}"
     time: f"{$admission_date_emerg[0:10]} {$time_admission_emerg}"::?"%Y-%m-%d %H:%M:%S"
-    
+
   mechanical_ventilation:
     code: '"MECHANICAL_VENTILATION" if $mechvent == "Yes"'
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
-    
+
   emergency_first_systolic_blood_pressure:
     code: '"VITAL//SYSTOLIC_BLOOD_PRESSURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $bp_max_first_emerg::?float64
-    
+
   emergency_first_diastolic_blood_pressure:
     code: '"VITAL//DIASTOLIC_BLOOD_PRESSURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $bp_min_first_emerg::?float64
-    
+
   emergency_first_temperature:
     code: '"VITAL//TEMPERATURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $temp_first_emerg::?float64
-    
+
   emergency_first_heart_rate:
     code: '"VITAL//HEART_RATE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $hr_first_emerg::?float64
-    
+
   emergency_first_oxygen_saturation:
     code: '"VITAL//OXYGEN_SATURATION"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $sat_02_first_emerg::?float64
-    
+
   emergency_first_blood_glucose:
     code: '"VITAL//BLOOD_GLUCOSE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $glu_first_emerg::?float64
-    
+
   emergency_first_urine_output:
     code: '"VITAL//URINE_OUTPUT"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $diuresis_first_emerg::?float64
-    
+
   emergency_last_systolic_blood_pressure:
     code: '"VITAL//SYSTOLIC_BLOOD_PRESSURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $bp_max_last_emerg::?float64
-    
+
   emergency_last_diastolic_blood_pressure:
     code: '"VITAL//DIASTOLIC_BLOOD_PRESSURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $bp_min_last_emerg::?float64
-    
+
   emergency_last_temperature:
     code: '"VITAL//TEMPERATURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $temp_last_emerg::?float64
-    
+
   emergency_last_heart_rate:
     code: '"VITAL//HEART_RATE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $hr_last_emerg::?float64
-    
+
   emergency_last_oxygen_saturation:
     code: '"VITAL//OXYGEN_SATURATION"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $sat_02_last_emerg::?float64
-    
+
   emergency_last_blood_glucose:
     code: '"VITAL//BLOOD_GLUCOSE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $glu_last_emerg::?float64
-    
 
 diagnosis_er_02:
   diagnosis_icd10_dia_ppal:
     code: f"DIAGNOSIS_ICD10//{$dia_ppal}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_02:
     code: f"DIAGNOSIS_ICD10//{$dia_02}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_03:
     code: f"DIAGNOSIS_ICD10//{$dia_03}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_04:
     code: f"DIAGNOSIS_ICD10//{$dia_04}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_05:
     code: f"DIAGNOSIS_ICD10//{$dia_05}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_06:
     code: f"DIAGNOSIS_ICD10//{$dia_06}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_07:
     code: f"DIAGNOSIS_ICD10//{$dia_07}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_08:
     code: f"DIAGNOSIS_ICD10//{$dia_08}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_09:
     code: f"DIAGNOSIS_ICD10//{$dia_09}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_10:
     code: f"DIAGNOSIS_ICD10//{$dia_10}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_11:
     code: f"DIAGNOSIS_ICD10//{$dia_11}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_12:
     code: f"DIAGNOSIS_ICD10//{$dia_12}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_01:
     code: f"PROCEDURE_ICD10PCS//{$proc_01}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_02:
     code: f"PROCEDURE_ICD10PCS//{$proc_02}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_03:
     code: f"PROCEDURE_ICD10PCS//{$proc_03}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_04:
     code: f"PROCEDURE_ICD10PCS//{$proc_04}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_05:
     code: f"PROCEDURE_ICD10PCS//{$proc_05}"
     time: 1970-01-01 @ 00:00
-    
 
 diagnosis_hosp_03:
   diagnosis_icd10_dia_ppal:
     code: f"DIAGNOSIS_ICD10//{$dia_ppal}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_02:
     code: f"DIAGNOSIS_ICD10//{$dia_02}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_03:
     code: f"DIAGNOSIS_ICD10//{$dia_03}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_04:
     code: f"DIAGNOSIS_ICD10//{$dia_04}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_05:
     code: f"DIAGNOSIS_ICD10//{$dia_05}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_06:
     code: f"DIAGNOSIS_ICD10//{$dia_06}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_07:
     code: f"DIAGNOSIS_ICD10//{$dia_07}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_08:
     code: f"DIAGNOSIS_ICD10//{$dia_08}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_09:
     code: f"DIAGNOSIS_ICD10//{$dia_09}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_10:
     code: f"DIAGNOSIS_ICD10//{$dia_10}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_11:
     code: f"DIAGNOSIS_ICD10//{$dia_11}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_12:
     code: f"DIAGNOSIS_ICD10//{$dia_12}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_13:
     code: f"DIAGNOSIS_ICD10//{$dia_13}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_14:
     code: f"DIAGNOSIS_ICD10//{$dia_14}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_15:
     code: f"DIAGNOSIS_ICD10//{$dia_15}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_16:
     code: f"DIAGNOSIS_ICD10//{$dia_16}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_17:
     code: f"DIAGNOSIS_ICD10//{$dia_17}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_18:
     code: f"DIAGNOSIS_ICD10//{$dia_18}"
     time: 1970-01-01 @ 00:00
-    
+
   diagnosis_icd10_dia_19:
     code: f"DIAGNOSIS_ICD10//{$dia_19}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_01:
     code: f"PROCEDURE_ICD10PCS//{$proc_01}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_02:
     code: f"PROCEDURE_ICD10PCS//{$proc_02}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_03:
     code: f"PROCEDURE_ICD10PCS//{$proc_03}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_04:
     code: f"PROCEDURE_ICD10PCS//{$proc_04}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_05:
     code: f"PROCEDURE_ICD10PCS//{$proc_05}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_06:
     code: f"PROCEDURE_ICD10PCS//{$proc_06}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_07:
     code: f"PROCEDURE_ICD10PCS//{$proc_07}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_08:
     code: f"PROCEDURE_ICD10PCS//{$proc_08}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_09:
     code: f"PROCEDURE_ICD10PCS//{$proc_09}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_10:
     code: f"PROCEDURE_ICD10PCS//{$proc_10}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_11:
     code: f"PROCEDURE_ICD10PCS//{$proc_11}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_12:
     code: f"PROCEDURE_ICD10PCS//{$proc_12}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_13:
     code: f"PROCEDURE_ICD10PCS//{$proc_13}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_14:
     code: f"PROCEDURE_ICD10PCS//{$proc_14}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_15:
     code: f"PROCEDURE_ICD10PCS//{$proc_15}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_16:
     code: f"PROCEDURE_ICD10PCS//{$proc_16}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_17:
     code: f"PROCEDURE_ICD10PCS//{$proc_17}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_18:
     code: f"PROCEDURE_ICD10PCS//{$proc_18}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_19:
     code: f"PROCEDURE_ICD10PCS//{$proc_19}"
     time: 1970-01-01 @ 00:00
-    
+
   procedure_icd10pcs_proc_20:
     code: f"PROCEDURE_ICD10PCS//{$proc_20}"
     time: 1970-01-01 @ 00:00
-    
+
   neoplasm_icdo3_neo_01:
     code: f"NEOPLASM_ICDO3//{$neo_01}"
     time: 1970-01-01 @ 00:00
-    
+
   neoplasm_icdo3_neo_02:
     code: f"NEOPLASM_ICDO3//{$neo_02}"
     time: 1970-01-01 @ 00:00
-    
+
   neoplasm_icdo3_neo_03:
     code: f"NEOPLASM_ICDO3//{$neo_03}"
     time: 1970-01-01 @ 00:00
-    
+
   neoplasm_icdo3_neo_04:
     code: f"NEOPLASM_ICDO3//{$neo_04}"
     time: 1970-01-01 @ 00:00
-    
+
   neoplasm_icdo3_neo_05:
     code: f"NEOPLASM_ICDO3//{$neo_05}"
     time: 1970-01-01 @ 00:00
-    
+
   neoplasm_icdo3_neo_06:
     code: f"NEOPLASM_ICDO3//{$neo_06}"
     time: 1970-01-01 @ 00:00
-    
 
 medication_05:
   medication_start:
@@ -380,7 +377,7 @@ medication_05:
     numeric_value: $daily_avrg_dose::?float64
     text_value: $drug_comercial_name
     medication_id: $medication_id
-    
+
     _metadata:
       atc7:
         id_atc7: $id_atc7
@@ -390,7 +387,6 @@ medication_05:
     time: $drug_end_date::?"%Y-%m-%d %H:%M:%S"
     text_value: $drug_comercial_name
     medication_id: $medication_id
-    
 
 lab_06:
   laboratory_result:
@@ -400,7 +396,6 @@ lab_06:
     text_value: $result_text ?? $val_result
     reference_range: $ref_values
     lab_id: $lab_id
-    
 
 vital_signs_04:
   systolic_blood_pressure:
@@ -408,37 +403,36 @@ vital_signs_04:
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $bp_max_ing::?float64
     vital_sign_id: $vital_sign_id
-    
+
   diastolic_blood_pressure:
     code: '"VITAL//DIASTOLIC_BLOOD_PRESSURE"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $bp_min_ing::?float64
     vital_sign_id: $vital_sign_id
-    
+
   temperature:
     code: '"VITAL//TEMPERATURE"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $temp_ing::?float64
     vital_sign_id: $vital_sign_id
-    
+
   heart_rate:
     code: '"VITAL//HEART_RATE"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $hr_ing::?float64
     vital_sign_id: $vital_sign_id
-    
+
   oxygen_saturation:
     code: '"VITAL//OXYGEN_SATURATION"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $sat_02_ing::?float64
     vital_sign_id: $vital_sign_id
-    
+
   blood_glucose:
     code: '"VITAL//BLOOD_GLUCOSE"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $glu_ing::?float64
     vital_sign_id: $vital_sign_id
-    
 
 CDSL-1.0.0-dicom-metadata:
   imaging:
