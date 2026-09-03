@@ -1,44 +1,52 @@
-# Zigong MEDS ETL
+# CDSL MEDS ETL
 
-Configuration-only [MEDS-Extract](https://github.com/mmcdermott/MEDS_extract) ETL for the
-[Zigong Fourth People's Hospital ICU infection database v1.1](https://physionet.org/content/icu-infection-zigong-fourth/1.1/).
+Configuration-first [MEDS-Extract](https://github.com/mmcdermott/MEDS_extract) ETL for
+[COVID Data for Shared Learning (CDSL) v1.0.0](https://physionet.org/content/covid-data-shared-learning/1.0.0/).
+It maps the tabular EHR data and DICOM metadata, never the `IMAGES/` tree.
 
-## Run
+## Download raw data without images
 
-Obtain access to the PhysioNet release, then export its credentials:
+After PhysioNet grants your data-use agreement:
+
+```bash
+read -rp "PhysioNet username: " USERNAME
+read -srp "PhysioNet password: " PASSWORD
+echo
+mkdir -p raw_cdsl && cd raw_cdsl &&
+	wget -r -N -c -np -nH --cut-dirs=3 \
+		--user="$USERNAME" --password="$PASSWORD" \
+		--reject-regex='.*/IMAGES/.*' \
+		https://physionet.org/files/covid-data-shared-learning/1.0.0/
+unset USERNAME PASSWORD
+```
+
+Or let MEDS-Extract download the same source declaratively:
 
 ```bash
 export DATASET_DOWNLOAD_USERNAME="$PHYSIONET_USERNAME"
 export DATASET_DOWNLOAD_PASSWORD="$PHYSIONET_PASSWORD"
-meds-extract-run spec=Zigong output_dir="$MEDS_OUTPUT_DIR"
+uv run meds-extract-download spec=CDSL output_dir=raw_cdsl
 ```
 
-To use files already downloaded from PhysioNet:
+## Run
+
+Three CDSL files are Latin-1 encoded, while MEDS-Extract's CSV reader requires UTF-8.
+The installed `meds-extract-run` stages a UTF-8 view automatically, without changing
+the downloaded files:
 
 ```bash
-meds-extract-run spec=Zigong output_dir="$MEDS_OUTPUT_DIR" \
-	do_download=false input_dir="$RAW_ZIGONG_DIR"
+uv run meds-extract-run spec=CDSL output_dir=cdsl_meds \
+	do_download=false input_dir=raw_cdsl/raw_cdsl
 ```
 
-The input directory must contain the release's `dtBaseline.csv`, `dtDrugs.csv`, `dtICD.csv`,
-`dtLab.csv`, `dtNursingChart.csv`, `dtOutCome.csv`, and `dtTransfer.csv` files.
+Set `input_dir` to the directory that directly contains `patient_01.csv` if your
+download layout differs. The internal staging step hard-links every other source file
+and transcodes only `atc7.csv`, `medication_05.csv`, and `vital_signs_04.csv`.
 
 ## Mapping
 
-`src/Zigong_MEDS/event_configs.yaml` converts the documented hour offsets from hospital admission
-to MEDS pseudotime using `1970-01-01` as a shared anchor. It maps demographics, admissions,
-transfers, diagnoses, laboratory results, prescriptions, nursing observations, death, and follow-up
-SF-36 responses. No external terminology mapping is claimed where the source does not document one.
-
-For a reusable mapping checklist, see [docs/MEDS_ETL_MAPPING.md](docs/MEDS_ETL_MAPPING.md).
-
-## Synthetic validation
-
-```bash
-uv pip install git+https://github.com/rvandewater/MESSY_synth.git
-MESSY-synth src/Zigong_MEDS/event_configs.yaml -o raw_synthetic/
-meds-extract-run spec=Zigong output_dir=zigong_meds_synth/ \
-	do_download=false input_dir=raw_synthetic/
-```
-
-The CI workflow runs this smoke test without accessing real data.
+CDSL's dates are deidentified but preserve within-patient chronology and are emitted
+directly. Diagnosis, procedure, and neoplasm tables supply no timestamps, so those events
+use the explicit `1970-01-01` pseudotime anchor. See
+[docs/MEDS_ETL_MAPPING.md](docs/MEDS_ETL_MAPPING.md) for the table-level mapping and
+limitations.

@@ -24,6 +24,6 @@ jobs:
       - name: Generate and extract synthetic data
         run: |
           uv pip install git+https://github.com/rvandewater/MESSY_synth.git
-          uv run MESSY-synth ./src/Zigong_MEDS/event_configs.yaml -o raw_synthetic/ --explain
-          uv run meds-extract-run spec=Zigong output_dir=zigong_meds_synth/ \
+          uv run MESSY-synth ./src/CDSL_MEDS/event_configs.yaml -o raw_synthetic/ --explain
+          uv run meds-extract-run spec=CDSL output_dir=CDSL_meds_synth/ \
             input_dir=raw_synthetic/ do_download=false

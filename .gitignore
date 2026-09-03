@@ -167,5 +167,16 @@ cython_debug/
 # Demo cohort built by tests/e2e_demo_test.py when MEDS_DEMO_OUTPUT_DIR points here (CI).
 .demo-cohort/
 
-# Local PhysioNet source data
-Zigong/
+# Local PhysioNet source data and generated CDSL cohorts
+raw_cdsl/
+prepared_cdsl/
+cdsl_meds/
+cdsl_meds_synth/
+raw_synthetic/
+.DS_Store
+
+# The package name differs from the generated cohort only by case.
+!/src/
+!/src/CDSL_MEDS/
+!/src/CDSL_MEDS/**
+src/**/__pycache__/
