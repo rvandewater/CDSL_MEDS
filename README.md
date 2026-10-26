@@ -18,17 +18,16 @@ Configuration-first [MEDS-Extract](https://github.com/mmcdermott/MEDS_extract) E
 [COVID Data for Shared Learning (CDSL) v1.0.0](https://physionet.org/content/covid-data-shared-learning/1.0.0/).
 It maps the tabular EHR data and DICOM metadata, never the `IMAGES/` tree.
 
-````
 ## Run
 
 Three CDSL files are Latin-1 encoded, while MEDS-Extract's CSV reader requires UTF-8.
-The installed `meds-extract-run` stages a UTF-8 view automatically, without changing
-the downloaded files:
+The `MEDS_extract-CDSL` command stages a UTF-8 view automatically, without changing
+the downloaded files, and then runs `meds-extract-run`. It takes the same arguments:
 
 ```bash
-uv run meds-extract-run spec=CDSL output_dir=cdsl_meds \
+uv run MEDS_extract-CDSL spec=CDSL output_dir=cdsl_meds \
 	do_download=false input_dir=raw_cdsl
-````
+```
 
 Set `input_dir` to the directory that directly contains `patient_01.csv` if your
 download layout differs. The internal staging step hard-links every other source file
