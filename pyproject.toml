@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "CDSL-MEDS"
 # Bump with `uv version --bump patch|minor|major`, then tag the commit with the same version.
-version = "0.0.1"
+version = "0.0.2"
 authors = [{ name = "Medical Event Data Standard" }]
 description = "An ETL pipeline to extract the COVID Data for Shared Learning dataset into MEDS."
 readme = "README.md"
