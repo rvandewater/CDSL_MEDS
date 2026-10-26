@@ -1,0 +1,14 @@
+abstract: No description provided.
+authors:
+- affiliation: Columbia University
+  family-names: Robin van de Water
+cff-version: 1.2.0
+date-released: '2026-10-26'
+doi: 10.5281/zenodo.23676596
+license:
+- mit
+message: If you use this software, please cite it using the metadata from this file.
+repository-code: https://github.com/rvandewater/CDSL_MEDS/tree/0.0.3
+title: 'rvandewater/CDSL_MEDS: Zenodo'
+type: software
+version: 0.0.3
