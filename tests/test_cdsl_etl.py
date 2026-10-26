@@ -58,7 +58,7 @@ def test_etl_runs_on_a_minimal_valid_fixture(tmp_path):
     output = tmp_path / "meds"
     result = subprocess.run(
         [
-            str(Path(sys.executable).parent / "meds-extract-run"),
+            str(Path(sys.executable).parent / "MEDS_extract-CDSL"),
             f"spec={ROOT / 'src/CDSL_MEDS/event_configs.yaml'}",
             f"output_dir={output}",
             "do_download=false",
