@@ -14,7 +14,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["meds-extract[download]>=0.7.0,<0.8"]
+dependencies = ["meds-extract[download]>=0.7.1,<0.8"]
 
 [project.scripts]
 meds-extract-run = "CDSL_MEDS.pre_meds:run"
