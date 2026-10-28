@@ -158,5 +158,16 @@ If you use this ETL, please cite the CDSL database:
   url = {https://doi.org/10.13026/1176-6c44}
 }
 ```
-
+And this ETL:
+```bibtex
+@software{Robin_van_de_Water_rvandewater_CDSL_MEDS_Zenodo_2026,
+author = {Robin van de Water},
+doi = {10.5281/zenodo.23676596},
+license = {["mit"]},
+month = oct,
+title = {{rvandewater/CDSL\_MEDS: Zenodo}},
+url = {https://github.com/rvandewater/CDSL_MEDS/,
+year = {2026}
+}
+```
 See also [`CITATION.cff`](CITATION.cff).
