@@ -48,7 +48,7 @@ def option(name: str) -> tuple[int, Path] | None:
 
 
 def describe_codes(output_dir: Path, input_dir: Path | None) -> None:
-    """Fill the code metadata MEDS-Extract cannot attach into the finished ``codes.parquet``."""
+    """Fill the descriptions MEDS-Extract cannot attach into the finished ``codes.parquet``."""
     codes_fp = output_dir / "metadata" / "codes.parquet"
     if not codes_fp.is_file():
         logger.warning(f"{codes_fp} not found; code metadata was not filled.")
@@ -57,11 +57,11 @@ def describe_codes(output_dir: Path, input_dir: Path | None) -> None:
     candidates.append(output_dir / ".meds_extract_run" / "pre_meds" / ICD10_DICTIONARY)
     dictionary = next((fp for fp in candidates if fp.is_file()), None)
     counts = apply_code_metadata(codes_fp, dictionary)
-    logger.info(f"Filled {counts['descriptions']} descriptions and {counts['parent_codes']} parent codes.")
+    logger.info(f"Filled {counts['descriptions']} descriptions.")
 
 
 def run() -> None:
-    """Stage CDSL's Latin-1 files, run MEDS-Extract, then fill the remaining code metadata."""
+    """Stage CDSL's Latin-1 files, run MEDS-Extract, then fill the remaining code descriptions."""
     input_dir = option("input_dir")
     output_dir = option("output_dir")
     if input_dir and output_dir and {path.name for path in input_dir[1].iterdir()} >= LATIN1_FILES:

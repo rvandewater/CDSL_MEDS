@@ -3,9 +3,10 @@
 # and procedure tables contain no time, so their events use the shared pseudotime anchor.
 #
 # Code metadata: `_metadata` blocks describe every code family emitted by a single event. Literal
-# codes and the slot-coded diagnosis, procedure and neoplasm codes cannot carry `_metadata` (no
-# components to join on; one code emitted by several slot events has several code templates), so
-# `MEDS_extract-CDSL` fills them in after the pipeline (see `code_descriptions.py`).
+# codes and the slot-coded diagnosis and neoplasm codes cannot carry `_metadata` (no components to
+# join on; one code emitted by several slot events has several code templates), so
+# `MEDS_extract-CDSL` describes them after the pipeline (see `code_descriptions.py`). Vocabulary
+# parent codes (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC) come from suMEDS (`sumeds_rules.yaml`).
 
 etl:
   dataset_name: CDSL
@@ -409,13 +410,8 @@ medication_05:
       atc7:
         id_atc7: $id_atc7
         description: $atc7_name
-      # One ATC parent: the ATC7 (level 5, chemical substance) code when it is well formed and
-      # lies under the row's ATC5 code, else the ATC5 (level 4, chemical subgroup) code. The
-      # description covers only rows without an ATC7 code, which the atc7 join cannot describe.
+      # Rows without an ATC7 code, which the atc7 join cannot describe.
       _self:
-        parent_codes: &atc_parent_code >-
-          f"ATC/{$id_atc7}" if ((/^[A-Z][0-9]{2}[A-Z]{2}[0-9]{2}$/ in $id_atc7) and ($id_atc7[0:5] == $id_atc5))
-          else f"ATC/{$id_atc5}" if (/^[A-Z][0-9]{2}[A-Z]{2}$/ in $id_atc5)
         description: >-
           f"Medication without an ATC7 code in the source; ATC5 category {$id_atc5} (CDSL
           medication_05.id_atc5)" if (($id_atc7 ?? "") == "")
@@ -430,7 +426,6 @@ medication_05:
         description: >-
           f"End of medication: {$atc7_name} (CDSL atc7.atc7_name)"
       _self:
-        parent_codes: *atc_parent_code
         description: >-
           f"End of medication without an ATC7 code in the source; ATC5 category {$id_atc5} (CDSL
           medication_05.id_atc5)" if (($id_atc7 ?? "") == "")

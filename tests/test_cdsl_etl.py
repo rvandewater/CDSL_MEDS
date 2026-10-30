@@ -24,7 +24,7 @@ def test_config_loads_and_excludes_images():
     assert raw["sources"]["dataset"][0]["exclude"] == ["IMAGES/**"]
 
 
-# Public example codes for the vocabulary-coded columns, so the fixture exercises parent codes.
+# Public example codes for the vocabulary-coded columns, so the fixture exercises their descriptions.
 VOCABULARY_VALUES = {
     "dia_": "I10",
     "proc_": "5A1955Z",
@@ -90,18 +90,20 @@ def test_etl_runs_on_a_minimal_valid_fixture(tmp_path):
     assert (output / "metadata/dataset.json").is_file()
     assert list((output / "data").glob("**/*.parquet"))
 
-    # Every code is described, vocabulary codes carry OMOP-style parents, and the file is valid MEDS.
+    # Every code but the ICD-10-PCS procedures (titled by suMEDS) is described, the ETL writes no
+    # vocabulary parent codes (suMEDS adds them), and the file is valid MEDS.
     codes = pq.read_table(output / "metadata/codes.parquet")
     CodeMetadataSchema.validate(codes)
     metadata = {r["code"]: r for r in codes.to_pylist()}
-    assert not [c for c, r in metadata.items() if not r["description"]]
+    undescribed = {c for c, r in metadata.items() if not r["description"]}
+    assert undescribed == {"PROCEDURE_ICD10PCS//5A1955Z"}
+    assert not [c for c, r in metadata.items() if r.get("parent_codes")]
     assert metadata["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
-    assert metadata["DIAGNOSIS_ICD10//I10"]["parent_codes"] == ["ICD10CM/I10"]
-    assert metadata["PROCEDURE_ICD10PCS//5A1955Z"]["parent_codes"] == ["ICD10PCS/5A1955Z"]
-    assert metadata["NEOPLASM_ICDO3//8140/3"]["parent_codes"] == ["ICDO3/8140/3"]
+    assert metadata["NEOPLASM_ICDO3//8140/3"]["description"].startswith("Neoplasm, ICD-O-3 morphology")
     assert metadata["MEDICATION//ATC5//H03AA//ATC7//H03AA01"]["description"] == "Example drug"
-    assert metadata["MEDICATION//ATC5//H03AA//ATC7//H03AA01"]["parent_codes"] == ["ATC/H03AA01"]
-    assert metadata["MEDICATION_END//ATC5//H03AA//ATC7//H03AA01"]["parent_codes"] == ["ATC/H03AA01"]
+    assert metadata["MEDICATION_END//ATC5//H03AA//ATC7//H03AA01"]["description"].startswith(
+        "End of medication: Example drug"
+    )
 
 
 def test_preparer_transcodes_latin1_and_links_other_files(tmp_path):

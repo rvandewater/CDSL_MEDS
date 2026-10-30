@@ -9,15 +9,18 @@ of codes cannot be described there, so ``MEDS_extract-CDSL`` fills them into the
   for ``_metadata`` to join on. MEDS-Extract documents a pre-existing ``codes.parquet`` for this
   case, but the standard extraction pipeline never reads it. Their descriptions are in
   ``metadata/static_code_descriptions.csv``, with the source of each row.
-* **Slot-coded vocabulary codes** (``DIAGNOSIS_ICD10//``, ``PROCEDURE_ICD10PCS//``,
-  ``NEOPLASM_ICDO3//``) come from one event per column of a wide table (``dia_ppal``,
-  ``dia_02``, ...). A code seen in two columns then has two code templates, which the
-  MEDS-Extract metadata reducer rejects, so those events cannot carry ``_metadata`` either.
-  Their parent codes follow from the code itself; diagnosis descriptions come from the
-  release's own ICD-10-CM dictionary, ``icd10_codes_dict.txt``.
+* **Slot-coded codes** (``DIAGNOSIS_ICD10//``, ``NEOPLASM_ICDO3//``) come from one event per
+  column of a wide table (``dia_ppal``, ``dia_02``, ...). A code seen in two columns then has two
+  code templates, which the MEDS-Extract metadata reducer rejects, so those events cannot carry
+  ``_metadata`` either. Diagnosis descriptions come from the release's own ICD-10-CM dictionary,
+  ``icd10_codes_dict.txt``; ICD-O-3 morphology codes get a template naming the code.
 
-Only missing values are filled: an extracted description or parent code always wins, no code
-is added, and running the fill twice changes nothing.
+Vocabulary parent codes (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC), and the official titles of the
+ICD-10-CM and ICD-10-PCS codes the release does not describe, are not added here: suMEDS adds
+them with the rules in ``sumeds_rules.yaml``.
+
+Only missing values are filled: an extracted description always wins, no code is added, and
+running the fill twice changes nothing.
 """
 
 import logging
@@ -48,15 +51,13 @@ ICD10_DICTIONARY_FIELDS = (
     "long_description",
 )
 
-# Code shapes. CDSL writes ICD-10-CM codes with the dot after the category, which is also how OMOP
-# writes ICD10CM concept codes. ICD-O-3 morphology is MMMM/B, optionally followed by the 6th-digit
-# grade or differentiation code; OMOP ICDO3 histology concepts carry MMMM/B only.
+# Code shapes. CDSL writes ICD-10-CM codes with the dot after the category; the dictionary has them
+# without it. ICD-O-3 morphology is MMMM/B, optionally followed by the 6th-digit grade or
+# differentiation code; such codes also occur in the diagnosis columns.
 ICD10CM_CODE = re.compile(r"^[A-Z][0-9][0-9A-Z](\.[0-9A-Z]{1,4})?$")
-ICD10PCS_CODE = re.compile(r"^[0-9A-HJ-NP-Z]{7}$")
-ICDO3_MORPHOLOGY_CODE = re.compile(r"^([0-9]{4}/[0-9])([0-9])?$")
+ICDO3_MORPHOLOGY_CODE = re.compile(r"^[0-9]{4}/[0-9]{1,2}$")
 
 DIAGNOSIS_SOURCE = "CDSL diagnosis_er_02 / diagnosis_hosp_03 dia_* columns"
-PROCEDURE_SOURCE = "CDSL diagnosis_er_02 / diagnosis_hosp_03 proc_* columns"
 NEOPLASM_SOURCE = "CDSL diagnosis_hosp_03 neo_* columns"
 
 
@@ -85,65 +86,55 @@ def read_icd10_dictionary(path: Path) -> dict[str, str]:
     return titles
 
 
-def _icdo3_parent(value: str) -> str | None:
-    match = ICDO3_MORPHOLOGY_CODE.match(value)
-    return f"ICDO3/{match.group(1)}" if match else None
+def slot_code_description(code: str, icd10_titles: Mapping[str, str]) -> str | None:
+    """Return the description of a slot-coded diagnosis or neoplasm code, else ``None``.
 
-
-def vocabulary_code_metadata(code: str, icd10_titles: Mapping[str, str]) -> tuple[str | None, str | None]:
-    """Return ``(description, parent_code)`` for a slot-coded vocabulary code, else ``(None, None)``.
+    ICD-10-CM codes are described only from the release's own dictionary. Codes it lacks, and all
+    ``PROCEDURE_ICD10PCS`` codes, are left undescribed, so that suMEDS can fill their official
+    titles from its versioned ICD-10-CM and ICD-10-PCS data (suMEDS fills only missing descriptions).
 
     Examples:
         >>> titles = {"I10": "Essential (primary) hypertension"}
-        >>> vocabulary_code_metadata("DIAGNOSIS_ICD10//I10", titles)
-        ('Essential (primary) hypertension', 'ICD10CM/I10')
-        >>> vocabulary_code_metadata("DIAGNOSIS_ICD10//J18.9", {})  # not in the dictionary
-        ... # doctest: +NORMALIZE_WHITESPACE
-        ('ICD-10-CM diagnosis J18.9 (CDSL diagnosis_er_02 / diagnosis_hosp_03 dia_* columns)',
-         'ICD10CM/J18.9')
-        >>> vocabulary_code_metadata("DIAGNOSIS_ICD10//8140/3", titles)[1]
-        'ICDO3/8140/3'
-        >>> vocabulary_code_metadata("PROCEDURE_ICD10PCS//5A1955Z", titles)[1]
-        'ICD10PCS/5A1955Z'
-        >>> vocabulary_code_metadata("NEOPLASM_ICDO3//8140/32", titles)[1]
-        'ICDO3/8140/3'
-        >>> vocabulary_code_metadata("LAB//Glucose//mg/dL", titles)
-        (None, None)
+        >>> slot_code_description("DIAGNOSIS_ICD10//I10", titles)
+        'Essential (primary) hypertension'
+        >>> slot_code_description("DIAGNOSIS_ICD10//J18.9", titles) is None  # not in the dictionary
+        True
+        >>> slot_code_description("DIAGNOSIS_ICD10//8140/3", titles).split(" (")[0]
+        'ICD-O-3 morphology code 8140/3 in an ICD-10 diagnosis column'
+        >>> slot_code_description("NEOPLASM_ICDO3//8140/32", titles)
+        'Neoplasm, ICD-O-3 morphology code 8140/32 (CDSL diagnosis_hosp_03 neo_* columns)'
+        >>> slot_code_description("PROCEDURE_ICD10PCS//5A1955Z", titles) is None
+        True
+        >>> slot_code_description("LAB//Glucose//mg/dL", titles) is None
+        True
     """
     family, sep, value = code.partition("//")
     if not sep:
-        return None, None
+        return None
     if family == "DIAGNOSIS_ICD10":
         if ICD10CM_CODE.match(value):
-            title = icd10_titles.get(value.replace(".", ""))
-            return title or f"ICD-10-CM diagnosis {value} ({DIAGNOSIS_SOURCE})", f"ICD10CM/{value}"
-        if parent := _icdo3_parent(value):
-            return (
-                f"ICD-O-3 morphology code {value} in an ICD-10 diagnosis column ({DIAGNOSIS_SOURCE})",
-                parent,
-            )
-        return f"Diagnosis code {value} ({DIAGNOSIS_SOURCE})", None
-    if family == "PROCEDURE_ICD10PCS":
-        parent = f"ICD10PCS/{value}" if ICD10PCS_CODE.match(value) else None
-        return f"ICD-10-PCS procedure {value} ({PROCEDURE_SOURCE})", parent
+            return icd10_titles.get(value.replace(".", ""))
+        if ICDO3_MORPHOLOGY_CODE.match(value):
+            return f"ICD-O-3 morphology code {value} in an ICD-10 diagnosis column ({DIAGNOSIS_SOURCE})"
+        return f"Diagnosis code {value} ({DIAGNOSIS_SOURCE})"
     if family == "NEOPLASM_ICDO3":
-        return f"Neoplasm, ICD-O-3 morphology code {value} ({NEOPLASM_SOURCE})", _icdo3_parent(value)
-    return None, None
+        return f"Neoplasm, ICD-O-3 morphology code {value} ({NEOPLASM_SOURCE})"
+    return None
 
 
 def apply_code_metadata(
     codes_fp: Path, icd10_dictionary: Path | None = None, static: pl.DataFrame | None = None
 ) -> dict[str, int]:
-    """Fill missing descriptions and parent codes in a finished ``codes.parquet``, in place.
+    """Fill missing descriptions in a finished ``codes.parquet``, in place.
 
     Args:
         codes_fp: The ``metadata/codes.parquet`` of a finished extraction.
-        icd10_dictionary: The release's ``icd10_codes_dict.txt``. Without it, ICD-10-CM codes
-            still get their parent code and a description naming the code.
+        icd10_dictionary: The release's ``icd10_codes_dict.txt``. Without it, ICD-10-CM codes stay
+            undescribed (suMEDS can fill their titles).
         static: Override of the packaged literal-code table (``code``, ``description``), for tests.
 
     Returns:
-        The number of codes whose description and whose parent codes were filled.
+        The number of codes whose description was filled.
 
     The file is validated against the MEDS code-metadata schema and replaced atomically. Polars
     writes strings as Arrow ``large_string``, which that schema rejects, so the MEDS columns are
@@ -155,39 +146,28 @@ def apply_code_metadata(
     if icd10_dictionary is not None and Path(icd10_dictionary).is_file():
         titles = read_icd10_dictionary(icd10_dictionary)
     else:
-        logger.warning(f"{ICD10_DICTIONARY} not found; ICD-10-CM codes are described by their code only.")
+        logger.warning(f"{ICD10_DICTIONARY} not found; ICD-10-CM codes are left undescribed.")
 
     codes = pl.from_arrow(pq.read_table(codes_fp))
     if "description" not in codes.columns:
         codes = codes.with_columns(pl.lit(None, dtype=pl.String).alias("description"))
-    if "parent_codes" not in codes.columns:
-        codes = codes.with_columns(pl.lit(None, dtype=pl.List(pl.String)).alias("parent_codes"))
 
-    vocabulary = [vocabulary_code_metadata(code, titles) for code in codes["code"]]
     filled = (
         codes.with_columns(
-            pl.Series("_vocab_description", [d for d, _ in vocabulary], dtype=pl.String),
-            pl.Series("_vocab_parent", [[p] if p else None for _, p in vocabulary], dtype=pl.List(pl.String)),
+            pl.Series(
+                "_slot_description",
+                [slot_code_description(code, titles) for code in codes["code"]],
+                dtype=pl.String,
+            ),
         )
         .join(static.rename({"description": "_static"}), on="code", how="left", maintain_order="left")
-        .with_columns(
-            pl.coalesce("description", "_static", "_vocab_description").alias("description"),
-            pl.when(pl.col("parent_codes").list.len().fill_null(0) > 0)
-            .then(pl.col("parent_codes"))
-            .otherwise(pl.col("_vocab_parent"))
-            .alias("parent_codes"),
-        )
+        .with_columns(pl.coalesce("description", "_static", "_slot_description").alias("description"))
         .select(codes.columns)
     )
-
-    def n_parents(df: pl.DataFrame) -> int:
-        return int((df["parent_codes"].list.len().fill_null(0) > 0).sum())
-
     counts = {
         "descriptions": int(
             filled["description"].is_not_null().sum() - codes["description"].is_not_null().sum()
         ),
-        "parent_codes": n_parents(filled) - n_parents(codes),
     }
 
     out = filled.to_arrow()

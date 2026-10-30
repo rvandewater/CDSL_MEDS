@@ -14,11 +14,12 @@ from CDSL_MEDS.code_descriptions import (
     apply_code_metadata,
     read_icd10_dictionary,
     read_static_code_descriptions,
-    vocabulary_code_metadata,
+    slot_code_description,
 )
 
 CONFIG_FP = Path(__file__).parents[1] / "src" / "CDSL_MEDS" / "event_configs.yaml"
-# Code families emitted by one event per wide-table column, described by `vocabulary_code_metadata`.
+# Code families emitted by one event per wide-table column, described by `slot_code_description`
+# (procedure codes are left to suMEDS).
 SLOT_FAMILIES = {"DIAGNOSIS_ICD10", "PROCEDURE_ICD10PCS", "NEOPLASM_ICDO3"}
 
 
@@ -78,22 +79,20 @@ def test_read_icd10_dictionary(tmp_path):
     assert read_icd10_dictionary(fp) == {"I10": "Essential (primary) hypertension", "A00": "Cholera"}
 
 
-def test_vocabulary_parent_codes_use_omop_vocabulary_ids():
+def test_slot_codes_get_dataset_descriptions_only():
+    titles = {"I10": "Essential (primary) hypertension"}
     cases = {
-        "DIAGNOSIS_ICD10//I10": "ICD10CM/I10",
-        "DIAGNOSIS_ICD10//E11.9": "ICD10CM/E11.9",
-        "DIAGNOSIS_ICD10//8140/3": "ICDO3/8140/3",
-        "DIAGNOSIS_ICD10//not a code": None,
-        "PROCEDURE_ICD10PCS//5A1955Z": "ICD10PCS/5A1955Z",
-        "PROCEDURE_ICD10PCS//X": None,
-        "NEOPLASM_ICDO3//8140/3": "ICDO3/8140/3",
-        "NEOPLASM_ICDO3//8140/32": "ICDO3/8140/3",
+        "DIAGNOSIS_ICD10//I10": "Essential (primary) hypertension",
+        "DIAGNOSIS_ICD10//E11.9": None,  # not in the release's dictionary: left to suMEDS
+        "DIAGNOSIS_ICD10//8140/3": "ICD-O-3 morphology code 8140/3 in an ICD-10 diagnosis column",
+        "DIAGNOSIS_ICD10//not a code": "Diagnosis code not a code",
+        "PROCEDURE_ICD10PCS//5A1955Z": None,  # official title from suMEDS's ICD-10-PCS pack
+        "NEOPLASM_ICDO3//8140/32": "Neoplasm, ICD-O-3 morphology code 8140/32",
         "LAB//Glucose//mg/dL": None,
     }
-    for code, parent in cases.items():
-        description, got = vocabulary_code_metadata(code, {})
-        assert got == parent, code
-        assert (description is None) == code.startswith("LAB//"), code
+    for code, expected in cases.items():
+        got = slot_code_description(code, titles)
+        assert (got and got.split(" (CDSL")[0]) == expected, code
 
 
 def test_apply_code_metadata_fills_only_missing_values(tmp_path):
@@ -115,29 +114,31 @@ def test_apply_code_metadata_fills_only_missing_values(tmp_path):
     fp = tmp_path / "codes.parquet"
     codes.write_parquet(fp)
 
-    assert apply_code_metadata(fp, dictionary) == {"descriptions": 2, "parent_codes": 1}
+    assert apply_code_metadata(fp, dictionary) == {"descriptions": 2}
     out = pl.read_parquet(fp)
     assert out.columns == codes.columns and out["code"].to_list() == codes["code"].to_list()
     rows = {r["code"]: r for r in out.iter_rows(named=True)}
     assert rows["VITAL//HEART_RATE"]["description"].startswith("Heart rate")
     assert rows["HOSPITAL_ADMISSION"]["description"] == "already extracted"
     assert rows["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
-    assert rows["DIAGNOSIS_ICD10//I10"]["parent_codes"] == ["ICD10CM/I10"]
+    # Parent codes are suMEDS's job: existing ones are kept, none are added.
+    assert rows["DIAGNOSIS_ICD10//I10"]["parent_codes"] is None
     assert rows["MEDICATION//ATC5//X"]["parent_codes"] == ["ATC/H03AA"]
-    assert apply_code_metadata(fp, dictionary) == {"descriptions": 0, "parent_codes": 0}
+    assert apply_code_metadata(fp, dictionary) == {"descriptions": 0}
     # Still valid MEDS code metadata as read from disk (string, not large_string).
     CodeMetadataSchema.validate(pq.read_table(fp))
 
 
-def test_apply_code_metadata_adds_a_missing_parent_codes_column(tmp_path):
+def test_apply_code_metadata_leaves_procedures_and_parents_to_sumeds(tmp_path):
     fp = tmp_path / "codes.parquet"
     pl.DataFrame(
-        {"code": ["PROCEDURE_ICD10PCS//5A1955Z"], "description": [None]},
+        {"code": ["PROCEDURE_ICD10PCS//5A1955Z", "NEOPLASM_ICDO3//8140/3"], "description": [None, None]},
         schema_overrides={"description": pl.String},
     ).write_parquet(fp)
-    assert apply_code_metadata(fp) == {"descriptions": 1, "parent_codes": 1}
+    assert apply_code_metadata(fp) == {"descriptions": 1}
     out = pl.read_parquet(fp)
-    assert out["parent_codes"].to_list() == [["ICD10PCS/5A1955Z"]]
+    assert out.columns == ["code", "description"]
+    assert out["description"].is_null().to_list() == [True, False]
     CodeMetadataSchema.validate(pq.read_table(fp))
 
 
