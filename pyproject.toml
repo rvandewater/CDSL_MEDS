@@ -40,7 +40,7 @@ where = ["src"]
 include = ["CDSL_MEDS*"]
 
 [tool.setuptools.package-data]
-CDSL_MEDS = ["*.yaml"]
+CDSL_MEDS = ["*.yaml", "metadata/*.csv"]
 
 [tool.ruff]
 target-version = "py311"
