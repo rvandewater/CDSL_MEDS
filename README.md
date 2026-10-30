@@ -141,7 +141,7 @@ Sources:
 - The [CDSL v1.0.0 documentation](https://physionet.org/content/covid-data-shared-learning/1.0.0/)
     on PhysioNet, for the meaning of each column (paraphrased; `cdsl-docs:` in the `source` column).
 - The release's own dictionary tables, `atc7.csv` and `icd10_codes_dict.txt`, read at ETL time and never
-    copied into this repository. `icd10_codes_dict.txt` is the public-domain CMS ICD-10-CM FY2021 order
+    copied into this repository. `icd10_codes_dict.txt` is the CMS ICD-10-CM FY2021 order
     file with its fields joined by `|`, as built by the dataset authors'
     [covidhm-code](https://github.com/theonesp/covidhm-code) (MIT,
     `CovidHM_V3-code/buildcovidhm/data_wrangling/V3_icd10_data_wrangling.py`).
@@ -169,7 +169,7 @@ suMEDS-enrich $MEDS_OUTPUT_DIR/metadata/codes.parquet -o codes_enriched.parquet 
 ```
 
 ICD-10-CM and ICD-10-PCS codes are validated against suMEDS's versioned ontology data
-(sumeds-ontologies, pinned release), built from the public-domain CMS and CDC files. The rules add:
+(sumeds-ontologies, pinned release), built from the CMS and CDC files. The rules add:
 
 - `DIAGNOSIS_ICD10` codes shaped like ICD-10-CM: parents `ICD10CM//{code}` and its ancestors; the CMS
     title where the release's dictionary has none.
