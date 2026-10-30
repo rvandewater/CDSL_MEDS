@@ -46,6 +46,8 @@ When you run this, the program will:
 3. Build the MEDS cohort from the staged files and write it to `$MEDS_OUTPUT_DIR` (`data/` and
     `metadata/`). All transformations and metadata extraction are declared in
     [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml).
+4. Fill in the code descriptions that MEDS-Extract cannot attach on its own (see
+    [Code metadata](#code-metadata)).
 
 If you already have the PhysioNet release on disk, skip the first command and point `input_dir` at the
 directory that directly contains `patient_01.csv`.
@@ -77,11 +79,11 @@ the name `CDSL`. That registration is what makes `spec=CDSL` work.
 ### Input encoding
 
 `atc7.csv`, `medication_05.csv` and `vital_signs_04.csv` are Latin-1 encoded, while MEDS-Extract's CSV
-reader requires UTF-8. The only Python in the package,
-[`src/CDSL_MEDS/pre_meds.py`](src/CDSL_MEDS/pre_meds.py), handles this: `MEDS_extract-CDSL` transcodes
-those three files into a staging directory, hard-links every other file, and then runs
-`meds-extract-run` on the staged copy. Because of this step, run the ETL with `MEDS_extract-CDSL` rather
-than `meds-extract-run` directly.
+reader requires UTF-8. [`src/CDSL_MEDS/pre_meds.py`](src/CDSL_MEDS/pre_meds.py) handles this:
+`MEDS_extract-CDSL` transcodes those three files into a staging directory, hard-links every other file,
+and then runs `meds-extract-run` on the staged copy. Because of this step and the
+[code metadata](#code-metadata) step that follows the pipeline, run the ETL with `MEDS_extract-CDSL`
+rather than `meds-extract-run` directly.
 
 ## Events
 
@@ -110,7 +112,79 @@ See [`docs/MEDS_ETL_MAPPING.md`](docs/MEDS_ETL_MAPPING.md) for the table-level m
 
 ### Code metadata
 
-`metadata/codes.parquet` links medication codes to `atc7.csv`: **`description`** is the ATC7 drug name.
+The ETL writes a **`description`** for every code whose meaning the release itself documents, and no
+**`parent_codes`**: vocabulary parents (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC), and the official titles of
+the ICD-10-PCS procedure codes, come from suMEDS (see
+[Enriching code metadata with suMEDS](#enriching-code-metadata-with-sumeds)). Descriptions name the CDSL
+column each value comes from. Spanish source values, such as the ATC names, are kept as they are, not
+translated.
+
+| Code family                                                                                                                                                   | Route                                                                                                                     | Description                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DIAGNOSIS_ICD10//{code}`                                                                                                                                     | filled after the pipeline ([`code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py))                                  | the ICD-10-CM long title from the release's `icd10_codes_dict.txt`; ICD-O-3 morphology codes (`MMMM/B`) found in diagnosis columns get a template naming the code |
+| `PROCEDURE_ICD10PCS//{code}`                                                                                                                                  | none in the ETL                                                                                                           | the CMS ICD-10-PCS title, added by suMEDS                                                                                                                         |
+| `NEOPLASM_ICDO3//{code}`                                                                                                                                      | filled after the pipeline                                                                                                 | a template naming the code (ICD-O-3 titles are licensed)                                                                                                          |
+| `MEDICATION//…`, `MEDICATION_END//…`                                                                                                                          | `atc7` join and `_self` block in `event_configs.yaml`                                                                     | the ATC7 name from the release's `atc7.csv` (prefixed "End of medication" for `MEDICATION_END`); for rows without an ATC7 code, a template naming the ATC5 code   |
+| `HOSPITAL_DISCHARGE`, `SEX`, `INPATIENT_DIAGNOSIS`, `EMERGENCY_DEPARTMENT`, `EMERGENCY_DIAGNOSIS`, `LAB`, `IMAGING`                                           | `_self` templates in `event_configs.yaml`                                                                                 | the code's values with the CDSL columns they come from                                                                                                            |
+| literal codes: `HOSPITAL_ADMISSION`, `ICU_ADMISSION`, `ICU_DISCHARGE`, `AGE_AT_ADMISSION`, `EMERGENCY_DEPARTMENT_VISIT`, `MECHANICAL_VENTILATION`, `VITAL//…` | [`metadata/static_code_descriptions.csv`](src/CDSL_MEDS/metadata/static_code_descriptions.csv), filled after the pipeline | the meaning of the source columns in the CDSL documentation, with the source of each row in the table's `source` column                                           |
+
+Two kinds of codes cannot be described in the config. MEDS-Extract attaches `_metadata` by joining on a
+code's components, so a literal code has nothing to join on, and the pre-existing `codes.parquet` that
+MEDS-Extract documents for this case is not read by the standard pipeline. The diagnosis, procedure and
+neoplasm codes come from one event per column of a wide table (`dia_ppal`, `dia_02`, ...), so a code seen
+in two columns has two code templates, which the MEDS-Extract metadata stage rejects. `MEDS_extract-CDSL`
+fills both into the finished `codes.parquet`: it only fills missing descriptions, never adds a code or a
+parent, can be rerun safely, and validates the file against `meds.CodeMetadataSchema`.
+
+Sources:
+
+- The [CDSL v1.0.0 documentation](https://physionet.org/content/covid-data-shared-learning/1.0.0/)
+    on PhysioNet, for the meaning of each column (paraphrased; `cdsl-docs:` in the `source` column).
+- The release's own dictionary tables, `atc7.csv` and `icd10_codes_dict.txt`, read at ETL time and never
+    copied into this repository. `icd10_codes_dict.txt` is the CMS ICD-10-CM FY2021 order
+    file with its fields joined by `|`, as built by the dataset authors'
+    [covidhm-code](https://github.com/theonesp/covidhm-code) (MIT,
+    `CovidHM_V3-code/buildcovidhm/data_wrangling/V3_icd10_data_wrangling.py`).
+
+**Which ICD-10.** The CDSL documentation says only "ICD-10". The dictionary shipped with the release is
+the US ICD-10-CM (FY2021), and Spain's CIE-10-ES is the Spanish edition of the ICD-10 Clinical
+Modification
+([Ministerio de Sanidad](https://www.sanidad.gob.es/areas/saludDigital/interoperabilidadSemantica/factoriaRecursos/recursosEU/estandarNacional.htm)),
+so the suMEDS rules map diagnosis codes to OMOP's `ICD10CM` vocabulary. CDSL already writes the codes
+with the dot where OMOP puts it.
+
+### Enriching code metadata with suMEDS
+
+Vocabulary work is maintained once, in [suMEDS](https://github.com/rvandewater/SumMEDS), rather than in
+every ETL. This package ships the rules for it,
+[`src/CDSL_MEDS/sumeds_rules.yaml`](src/CDSL_MEDS/sumeds_rules.yaml):
+
+```bash
+pip install sumeds # a release with rules support (newer than 0.3.2)
+suMEDS-enrich $MEDS_OUTPUT_DIR/metadata/codes.parquet -o codes_enriched.parquet \
+	--rules src/CDSL_MEDS/sumeds_rules.yaml
+# Optional: validate ATC and ICD-O-3 codes against your own OHDSI Athena download.
+suMEDS-enrich $MEDS_OUTPUT_DIR/metadata/codes.parquet -o codes_enriched.parquet \
+	--rules src/CDSL_MEDS/sumeds_rules.yaml --athena-csv /path/to/athena
+```
+
+ICD-10-CM and ICD-10-PCS codes are validated against suMEDS's versioned ontology data
+(sumeds-ontologies, pinned release), built from the CMS and CDC files. The rules add:
+
+- `DIAGNOSIS_ICD10` codes shaped like ICD-10-CM: parents `ICD10CM//{code}` and its ancestors; the CMS
+    title where the release's dictionary has none.
+- `PROCEDURE_ICD10PCS` codes: parents `ICD10PCS//{code}` and its ancestors; the CMS title.
+- ICD-O-3 morphology codes (`NEOPLASM_ICDO3`, and `MMMM/B` codes in diagnosis columns): parent
+    `ICDO3//{MMMM/B}`, the sixth (grade) digit dropped. ICD-O-3 is licensed, so suMEDS only tags these
+    codes unless Athena validates them.
+- `MEDICATION` and `MEDICATION_END`: parent `ATC//{id_atc7}` when the ATC7 code is well formed and lies
+    under the row's ATC5 code, else `ATC//{id_atc5}`. ATC is licensed too: tagged only, or validated with
+    its ancestors by Athena.
+- Same-dataset parents: a diagnosis or procedure code gets the nearest shorter code of the same family
+    that CDSL contains (`DIAGNOSIS_ICD10//J18` for `DIAGNOSIS_ICD10//J18.9`).
+
+suMEDS fills only missing descriptions, never removes or rewrites existing metadata, and writes parents
+as `VOCABULARY//CODE`. The ETL alone no longer emits these parent codes or the ICD-10-PCS descriptions.
 
 ### Data notes
 
@@ -131,10 +205,14 @@ See [`docs/MEDS_ETL_MAPPING.md`](docs/MEDS_ETL_MAPPING.md) for the table-level m
 ## Testing
 
 `tests/test_cdsl_etl.py` checks that the config loads and excludes `IMAGES/`, builds a minimal raw
-fixture from the columns the config needs, runs `MEDS_extract-CDSL` over it, and checks the Latin-1
-staging step. The [synthetic ETL workflow](.github/workflows/synthetic-etl.yaml) also generates raw files
-straight from the config with [MESSY-synth](https://github.com/rvandewater/MESSY_synth) and fails if any
-event block yields no events.
+fixture from the columns the config needs, runs `MEDS_extract-CDSL` over it (every code but the
+ICD-10-PCS procedures described, no parent codes, valid MEDS code metadata), and checks the Latin-1
+staging step. `tests/test_code_descriptions.py` checks that the literal-code table is complete and
+sourced, that every other code family has a description route, and that the post-pipeline fill keeps
+existing values. `tests/test_sumeds_rules.py` checks that the suMEDS rules parse and match example codes
+built from the config's code templates. The [synthetic ETL
+workflow](.github/workflows/synthetic-etl.yaml) also generates raw files straight from the config with
+[MESSY-synth](https://github.com/rvandewater/MESSY_synth) and fails if any event block yields no events.
 
 ```bash
 uv sync --group dev
@@ -158,7 +236,9 @@ If you use this ETL, please cite the CDSL database:
   url = {https://doi.org/10.13026/1176-6c44}
 }
 ```
+
 And this ETL:
+
 ```bibtex
 @software{Robin_van_de_Water_rvandewater_CDSL_MEDS_Zenodo_2026,
 author = {Robin van de Water},
@@ -170,4 +250,5 @@ url = {https://github.com/rvandewater/CDSL_MEDS/,
 year = {2026}
 }
 ```
+
 See also [`CITATION.cff`](CITATION.cff).

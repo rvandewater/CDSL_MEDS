@@ -4,7 +4,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pyarrow.parquet as pq
 import yaml
+from meds import CodeMetadataSchema
 from MEDS_extract.config import MessyConfig
 
 from CDSL_MEDS import pre_meds
@@ -22,7 +24,19 @@ def test_config_loads_and_excludes_images():
     assert raw["sources"]["dataset"][0]["exclude"] == ["IMAGES/**"]
 
 
+# Public example codes for the vocabulary-coded columns, so the fixture exercises their descriptions.
+VOCABULARY_VALUES = {
+    "dia_": "I10",
+    "proc_": "5A1955Z",
+    "neo_": "8140/3",
+    "id_atc5": "H03AA",
+    "id_atc7": "H03AA01",
+}
+
+
 def value_for(column):
+    if value := next((v for prefix, v in VOCABULARY_VALUES.items() if column.startswith(prefix)), None):
+        return value
     if column.endswith("_id"):
         return "1"
     if column == "time_constant_first_emerg":
@@ -53,7 +67,10 @@ def test_etl_runs_on_a_minimal_valid_fixture(tmp_path):
                 }
                 for subject_id in range(1, 11)
             )
-    (raw / "atc7.csv").write_text("id_atc7,atc7_name\nX,Example drug\n")
+    (raw / "atc7.csv").write_text("id_atc7,atc7_name\nH03AA01,Example drug\n")
+    (raw / "icd10_codes_dict.txt").write_text(
+        "11096|I10|1|Essential (primary) hypertension|Essential (primary) hypertension\n"
+    )
 
     output = tmp_path / "meds"
     result = subprocess.run(
@@ -72,6 +89,21 @@ def test_etl_runs_on_a_minimal_valid_fixture(tmp_path):
     assert (output / ".meds_extract_run/pre_meds/atc7.csv").is_file()
     assert (output / "metadata/dataset.json").is_file()
     assert list((output / "data").glob("**/*.parquet"))
+
+    # Every code but the ICD-10-PCS procedures (titled by suMEDS) is described, the ETL writes no
+    # vocabulary parent codes (suMEDS adds them), and the file is valid MEDS.
+    codes = pq.read_table(output / "metadata/codes.parquet")
+    CodeMetadataSchema.validate(codes)
+    metadata = {r["code"]: r for r in codes.to_pylist()}
+    undescribed = {c for c, r in metadata.items() if not r["description"]}
+    assert undescribed == {"PROCEDURE_ICD10PCS//5A1955Z"}
+    assert not [c for c, r in metadata.items() if r.get("parent_codes")]
+    assert metadata["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
+    assert metadata["NEOPLASM_ICDO3//8140/3"]["description"].startswith("Neoplasm, ICD-O-3 morphology")
+    assert metadata["MEDICATION//ATC5//H03AA//ATC7//H03AA01"]["description"] == "Example drug"
+    assert metadata["MEDICATION_END//ATC5//H03AA//ATC7//H03AA01"]["description"].startswith(
+        "End of medication: Example drug"
+    )
 
 
 def test_preparer_transcodes_latin1_and_links_other_files(tmp_path):

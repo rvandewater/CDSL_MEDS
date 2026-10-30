@@ -1,6 +1,12 @@
 # COVID Data for Shared Learning (CDSL) (PhysioNet v1.0.0) to MEDS.
 # CDSL timestamps are deidentified but retain within-patient chronology. The diagnosis
 # and procedure tables contain no time, so their events use the shared pseudotime anchor.
+#
+# Code metadata: `_metadata` blocks describe every code family emitted by a single event. Literal
+# codes and the slot-coded diagnosis and neoplasm codes cannot carry `_metadata` (no components to
+# join on; one code emitted by several slot events has several code templates), so
+# `MEDS_extract-CDSL` describes them after the pipeline (see `code_descriptions.py`). Vocabulary
+# parent codes (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC) come from suMEDS (`sumeds_rules.yaml`).
 
 etl:
   dataset_name: CDSL
@@ -17,6 +23,11 @@ patient_01:
   hospital_discharge:
     code: f"HOSPITAL_DISCHARGE//{$destin_discharge ?? 'UNKNOWN'}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
+    _metadata:
+      _self:
+        description: >-
+          f"Hospital discharge; discharge destination: {$destin_discharge ?? 'UNKNOWN'} (CDSL
+          patient_01.destin_discharge)"
 
   icu_admission:
     code: ICU_ADMISSION
@@ -34,10 +45,18 @@ patient_01:
   sex:
     code: f"SEX//{$sex}"
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
+    _metadata:
+      _self:
+        description: >-
+          f"Sex: {$sex} (CDSL patient_01.sex)"
 
   inpatient_diagnosis:
     code: f"INPATIENT_DIAGNOSIS//{$diag_inpat}"
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
+    _metadata:
+      _self:
+        description: >-
+          f"COVID-related diagnosis of the hospital admission: {$diag_inpat} (CDSL patient_01.diag_inpat)"
 
   emergency_visit:
     code: EMERGENCY_DEPARTMENT_VISIT
@@ -46,10 +65,19 @@ patient_01:
   emergency_department:
     code: f"EMERGENCY_DEPARTMENT//{$department_emerg}"
     time: f"{$admission_date_emerg[0:10]} {$time_admission_emerg}"::?"%Y-%m-%d %H:%M:%S"
+    _metadata:
+      _self:
+        description: >-
+          f"Emergency department visit; department where the patient was treated: {$department_emerg}
+          (CDSL patient_01.department_emerg)"
 
   emergency_diagnosis:
     code: f"EMERGENCY_DIAGNOSIS//{$diag_emerg}"
     time: f"{$admission_date_emerg[0:10]} {$time_admission_emerg}"::?"%Y-%m-%d %H:%M:%S"
+    _metadata:
+      _self:
+        description: >-
+          f"Diagnosis given in the emergency department: {$diag_emerg} (CDSL patient_01.diag_emerg)"
 
   mechanical_ventilation:
     code: '"MECHANICAL_VENTILATION" if $mechvent == "Yes"'
@@ -382,11 +410,25 @@ medication_05:
       atc7:
         id_atc7: $id_atc7
         description: $atc7_name
+      # Rows without an ATC7 code, which the atc7 join cannot describe.
+      _self:
+        description: >-
+          f"Medication without an ATC7 code in the source; ATC5 category {$id_atc5} (CDSL
+          medication_05.id_atc5)" if (($id_atc7 ?? "") == "")
   medication_end:
     code: f"MEDICATION_END//ATC5//{$id_atc5}//ATC7//{$id_atc7 ?? 'UNKNOWN'}"
     time: $drug_end_date::?"%Y-%m-%d %H:%M:%S"
     text_value: $drug_comercial_name
     medication_id: $medication_id
+    _metadata:
+      atc7:
+        id_atc7: $id_atc7
+        description: >-
+          f"End of medication: {$atc7_name} (CDSL atc7.atc7_name)"
+      _self:
+        description: >-
+          f"End of medication without an ATC7 code in the source; ATC5 category {$id_atc5} (CDSL
+          medication_05.id_atc5)" if (($id_atc7 ?? "") == "")
 
 lab_06:
   laboratory_result:
@@ -396,6 +438,11 @@ lab_06:
     text_value: $result_text ?? $val_result
     reference_range: $ref_values
     lab_id: $lab_id
+    _metadata:
+      _self:
+        description: >-
+          f"Laboratory test: {$item_lab}; unit: {$ud_result ?? 'UNKNOWN'} (CDSL lab_06.item_lab,
+          lab_06.ud_result)"
 
 vital_signs_04:
   systolic_blood_pressure:
@@ -444,6 +491,11 @@ CDSL-1.0.0-dicom-metadata:
     view_position: $ViewPosition
     patient_position: $PatientPosition
     spatial_resolution: $SpatialResolution
+    _metadata:
+      _self:
+        description: >-
+          f"Imaging study; modality {$Modality}, study description {$StudyDescription}, body part
+          {$BodyPart} (CDSL DICOM metadata Modality, StudyDescription, BodyPart)"
 
 sources:
   dataset_version: "1.0.0"
