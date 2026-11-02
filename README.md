@@ -160,7 +160,7 @@ every ETL. This package ships the rules for it,
 [`src/CDSL_MEDS/sumeds_rules.yaml`](src/CDSL_MEDS/sumeds_rules.yaml):
 
 ```bash
-pip install sumeds # a release with rules support (newer than 0.3.2)
+pip install "sumeds>=0.4"
 suMEDS-enrich $MEDS_OUTPUT_DIR/metadata/codes.parquet -o codes_enriched.parquet \
 	--rules src/CDSL_MEDS/sumeds_rules.yaml
 # Optional: validate ATC and ICD-O-3 codes against your own OHDSI Athena download.
@@ -209,8 +209,8 @@ fixture from the columns the config needs, runs `MEDS_extract-CDSL` over it (eve
 ICD-10-PCS procedures described, no parent codes, valid MEDS code metadata), and checks the Latin-1
 staging step. `tests/test_code_descriptions.py` checks that the literal-code table is complete and
 sourced, that every other code family has a description route, and that the post-pipeline fill keeps
-existing values. `tests/test_sumeds_rules.py` checks that the suMEDS rules parse and match example codes
-built from the config's code templates. The [synthetic ETL
+existing values. `tests/test_sumeds_rules.py` loads the rules with suMEDS and checks what example codes
+built from the config's code templates resolve to. The [synthetic ETL
 workflow](.github/workflows/synthetic-etl.yaml) also generates raw files straight from the config with
 [MESSY-synth](https://github.com/rvandewater/MESSY_synth) and fails if any event block yields no events.
 
