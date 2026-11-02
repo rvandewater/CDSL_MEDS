@@ -1,0 +1,14 @@
+code,description,source
+HOSPITAL_ADMISSION,Hospital admission (CDSL patient_01.admission_d_inpat),cdsl-docs:patient_01 hospital admission date (admission_d_inpat)
+ICU_ADMISSION,ICU admission (CDSL patient_01.icu_date_in),cdsl-docs:patient_01 ICU admission date (icu_date_in)
+ICU_DISCHARGE,ICU discharge (CDSL patient_01.icu_date_out),cdsl-docs:patient_01 ICU discharge date (icu_date_out)
+AGE_AT_ADMISSION,"Patient age, placed at hospital admission; numeric_value is the age (CDSL patient_01.age)",cdsl-docs:patient_01 demographics (age); placement from event_configs.yaml
+EMERGENCY_DEPARTMENT_VISIT,"Emergency department visit that led to the hospital admission (CDSL patient_01.admission_date_emerg, time_admission_emerg)",cdsl-docs:patient_01 ED visit date and time (admission_date_emerg; time_admission_emerg)
+MECHANICAL_VENTILATION,"Mechanical ventilation during the hospital stay (CDSL patient_01.mechvent is Yes); placed at hospital admission, not at the start of ventilation",cdsl-docs:patient_01 mechvent; placement from event_configs.yaml
+VITAL//SYSTOLIC_BLOOD_PRESSURE,"Systolic (maximum) blood pressure; unit not documented (CDSL vital_signs_04.bp_max_ing, patient_01.bp_max_first_emerg, bp_max_last_emerg)",cdsl-docs:vital_signs_04 maximum blood pressure (bp_max_ing); patient_01 ED vital signs
+VITAL//DIASTOLIC_BLOOD_PRESSURE,"Diastolic (minimum) blood pressure; unit not documented (CDSL vital_signs_04.bp_min_ing, patient_01.bp_min_first_emerg, bp_min_last_emerg)",cdsl-docs:vital_signs_04 minimum blood pressure (bp_min_ing); patient_01 ED vital signs
+VITAL//TEMPERATURE,"Body temperature; unit not documented (CDSL vital_signs_04.temp_ing, patient_01.temp_first_emerg, temp_last_emerg)",cdsl-docs:vital_signs_04 body temperature (temp_ing); patient_01 ED vital signs
+VITAL//HEART_RATE,"Heart rate; unit not documented (CDSL vital_signs_04.hr_ing, patient_01.hr_first_emerg, hr_last_emerg)",cdsl-docs:vital_signs_04 heart rate (hr_ing); patient_01 ED vital signs
+VITAL//OXYGEN_SATURATION,"Oxygen saturation; unit not documented (CDSL vital_signs_04.sat_02_ing, patient_01.sat_02_first_emerg, sat_02_last_emerg)",cdsl-docs:vital_signs_04 oxygen saturation (sat_02_ing); patient_01 ED vital signs
+VITAL//BLOOD_GLUCOSE,"Blood glucose level; unit not documented (CDSL vital_signs_04.glu_ing, patient_01.glu_first_emerg, glu_last_emerg)",cdsl-docs:vital_signs_04 blood glucose level (glu_ing); patient_01 ED vital signs
+VITAL//URINE_OUTPUT,"Urine output (diuresis) at the first emergency department assessment; unit not documented (CDSL patient_01.diuresis_first_emerg)",cdsl-docs:patient_01 initial ED vital signs (diuresis_first_emerg)

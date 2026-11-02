@@ -1,0 +1,61 @@
+# suMEDS enrichment rules for CDSL_MEDS code metadata (https://github.com/rvandewater/SumMEDS).
+#
+# The ETL describes codes from CDSL's own tables and documentation. Vocabulary parent codes, and the
+# official ICD-10-CM / ICD-10-PCS titles of codes the ETL leaves undescribed, come from suMEDS:
+#
+#   suMEDS-enrich $MEDS_OUTPUT_DIR/metadata/codes.parquet -o codes_enriched.parquet \
+#     --rules src/CDSL_MEDS/sumeds_rules.yaml
+#
+# Every pattern matches one code layout of `event_configs.yaml` exactly; tests/test_sumeds_rules.py
+# checks them against example codes built from that config.
+schema: sumeds-rules/0.1
+
+ontology:
+  # DIAGNOSIS_ICD10//{dia_*}. CDSL writes ICD-10-CM codes with the dot after the category, which is
+  # the format of the suMEDS ICD-10-CM data and of OMOP concept codes; validated codes get their
+  # ancestors as parents.
+  - id: cdsl-icd10cm-diagnoses
+    pattern: '^DIAGNOSIS_ICD10//(?P<code>[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?)$'
+    vocabulary: ICD10CM
+    validate: pack
+  # ICD-O-3 morphology codes (MMMM/B, optionally a sixth grade digit) found in the diagnosis columns,
+  # routed by their shape. OMOP ICDO3 histology concepts are MMMM/B, so the grade digit is dropped.
+  # ICD-O-3 is licensed and has no suMEDS pack: tagged only, or validated by your own Athena download.
+  - id: cdsl-icdo3-diagnoses
+    pattern: "^DIAGNOSIS_ICD10//(?P<code>[0-9]{4}/[0-9])[0-9]?$"
+    vocabulary: ICDO3
+    validate: none
+  # PROCEDURE_ICD10PCS//{proc_*}: seven-character ICD-10-PCS codes.
+  - id: cdsl-icd10pcs-procedures
+    pattern: "^PROCEDURE_ICD10PCS//(?P<code>[0-9A-HJ-NP-Z]{7})$"
+    vocabulary: ICD10PCS
+    validate: pack
+  # NEOPLASM_ICDO3//{neo_*}: ICD-O-3 morphology, as for the diagnosis columns.
+  - id: cdsl-icdo3-neoplasms
+    pattern: "^NEOPLASM_ICDO3//(?P<code>[0-9]{4}/[0-9])[0-9]?$"
+    vocabulary: ICDO3
+    validate: none
+  # MEDICATION[_END]//ATC5//{id_atc5}//ATC7//{id_atc7}: the ATC7 (level 5, chemical substance) code
+  # when it is well formed and lies under the row's ATC5 code ...
+  - id: cdsl-atc7-medications
+    pattern: "^MEDICATION(?:_END)?//ATC5//(?P<atc5>[A-Z][0-9]{2}[A-Z]{2})//ATC7//(?P<code>(?P=atc5)[0-9]{2})$"
+    vocabulary: ATC
+    validate: none
+  # ... else the ATC5 (level 4, chemical subgroup) code. ATC is licensed and has no suMEDS pack.
+  - id: cdsl-atc5-medications
+    pattern: "^MEDICATION(?:_END)?//ATC5//(?P<code>[A-Z][0-9]{2}[A-Z]{2})//ATC7//[^/]+$"
+    vocabulary: ATC
+    validate: none
+
+hierarchy:
+  # Same-dataset parents: the nearest shorter diagnosis or procedure code that CDSL itself contains,
+  # e.g. DIAGNOSIS_ICD10//J18 for DIAGNOSIS_ICD10//J18.9.
+  - id: cdsl-diagnosis-prefixes
+    pattern: '^(?P<prefix>DIAGNOSIS_ICD10//)(?P<code>[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?)$'
+    group: code
+    mode: prefix
+    ignore: "."
+  - id: cdsl-procedure-prefixes
+    pattern: "^(?P<prefix>PROCEDURE_ICD10PCS//)(?P<code>[0-9A-HJ-NP-Z]{2,7})$"
+    group: code
+    mode: prefix

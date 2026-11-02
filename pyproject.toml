@@ -27,6 +27,8 @@ dev = [
     "pytest~=9.0",
     "pytest-rerunfailures==16.1",
     "shfmt-py==3.12.0.2",
+    # tests/test_sumeds_rules.py loads the packaged rules with suMEDS itself.
+    "sumeds>=0.4",
 ]
 
 [project.entry-points."MEDS_extract.pipelines"]
@@ -40,7 +42,7 @@ where = ["src"]
 include = ["CDSL_MEDS*"]
 
 [tool.setuptools.package-data]
-CDSL_MEDS = ["*.yaml"]
+CDSL_MEDS = ["*.yaml", "metadata/*.csv"]
 
 [tool.ruff]
 target-version = "py311"

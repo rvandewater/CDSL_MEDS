@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Stage CDSL input without modifying the downloaded files."""
+"""Stage CDSL input for MEDS-Extract and finish its code metadata.
+
+The downloaded files are never modified.
+"""
 
 import argparse
+import logging
 import os
 import shutil
 import sys
 from pathlib import Path
+
+from CDSL_MEDS.code_descriptions import ICD10_DICTIONARY, apply_code_metadata
+
+logger = logging.getLogger(__name__)
 
 LATIN1_FILES = {"atc7.csv", "medication_05.csv", "vital_signs_04.csv"}
 
@@ -39,8 +47,21 @@ def option(name: str) -> tuple[int, Path] | None:
     return None
 
 
+def describe_codes(output_dir: Path, input_dir: Path | None) -> None:
+    """Fill the descriptions MEDS-Extract cannot attach into the finished ``codes.parquet``."""
+    codes_fp = output_dir / "metadata" / "codes.parquet"
+    if not codes_fp.is_file():
+        logger.warning(f"{codes_fp} not found; code metadata was not filled.")
+        return
+    candidates = [input_dir / ICD10_DICTIONARY] if input_dir else []
+    candidates.append(output_dir / ".meds_extract_run" / "pre_meds" / ICD10_DICTIONARY)
+    dictionary = next((fp for fp in candidates if fp.is_file()), None)
+    counts = apply_code_metadata(codes_fp, dictionary)
+    logger.info(f"Filled {counts['descriptions']} descriptions.")
+
+
 def run() -> None:
-    """Stage CDSL's Latin-1 files before delegating to MEDS-Extract."""
+    """Stage CDSL's Latin-1 files, run MEDS-Extract, then fill the remaining code descriptions."""
     input_dir = option("input_dir")
     output_dir = option("output_dir")
     if input_dir and output_dir and {path.name for path in input_dir[1].iterdir()} >= LATIN1_FILES:
@@ -51,7 +72,13 @@ def run() -> None:
 
     from MEDS_extract.run.cli import main as meds_extract_run
 
-    meds_extract_run()
+    try:
+        meds_extract_run()
+    except SystemExit as stop:  # The CLI always exits; stop here only if it failed.
+        if stop.code:
+            raise
+    if output_dir:
+        describe_codes(output_dir[1], input_dir[1] if input_dir else None)
 
 
 def main() -> None:
