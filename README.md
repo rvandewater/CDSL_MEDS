@@ -182,12 +182,22 @@ MEDS_extract-CDSL spec=CDSL output_dir=$MEDS_OUTPUT_DIR do_download=false input_
 	-- --offline
 ```
 
-To enrich the `codes.parquet` of an existing build, for example one made with `--no-enrich`:
+Enrichment is on by default and soft-fails: if it cannot finish, for example on a server without
+internet access, `metadata/codes.parquet` is left as the ETL wrote it, a warning gives the command that
+enriches it later, and the run still succeeds. Pass `-- --strict` to make a failed enrichment an error,
+or `--no-enrich` to skip it.
+
+`metadata/dataset.json` tells whether a build was enriched: `sumeds_enrichment.enriched` is `true` or
+`false`, next to the rules, options and coverage used. To enrich a build afterwards, as the default run
+would have:
 
 ```bash
-suMEDS-enrich "$MEDS_OUTPUT_DIR/metadata/codes.parquet" -o "$MEDS_OUTPUT_DIR/metadata/codes.parquet" \
-	--rules CDSL
+suMEDS-enrich "$MEDS_OUTPUT_DIR"
+# Air-gapped: from a copy of the sumeds-ontologies packs directory instead of GitHub
+suMEDS-enrich "$MEDS_OUTPUT_DIR" --ontology-source /path/to/sumeds-ontologies/ontologies --offline
 ```
+
+A build made with `--no-enrich` has no record to reuse, so add `--rules CDSL`.
 
 ICD-10-CM and ICD-10-PCS codes are validated against suMEDS's versioned ontology data
 (sumeds-ontologies, pinned release), built from the CMS and CDC files. The rules add:
@@ -233,9 +243,10 @@ and runs `MEDS_extract-CDSL --no-enrich` over the fixture (every code but the IC
 described, no parent codes, valid MEDS code metadata, Latin-1 text decoded).
 `tests/test_run_with_enrichment.py` runs `MEDS_extract-CDSL` with the enrichment, offline against a tiny
 synthetic ontology pack, and checks that suMEDS adds titles and parents without changing the release's
-own descriptions or the events. `tests/test_code_descriptions.py` checks that the literal-code table is
-complete and sourced, that every other code family has a description route, and that the post-pipeline
-fill keeps existing values. `tests/test_sumeds_rules.py` checks that the rules are registered as `CDSL`
+own descriptions or the events, and records the enrichment in `dataset.json`. Without packs, it checks
+that the run soft-fails with `codes.parquet` unchanged, and that `suMEDS-enrich` on the build finishes
+it. `tests/test_code_descriptions.py` checks that the literal-code table is complete and sourced, that
+every other code family has a description route, and that the post-pipeline fill keeps existing values. `tests/test_sumeds_rules.py` checks that the rules are registered as `CDSL`
 and load in suMEDS, and what example codes built from the config's code templates resolve to. The
 [synthetic ETL
 workflow](.github/workflows/synthetic-etl.yaml) also generates raw files straight from the config with

@@ -9,7 +9,10 @@
    :mod:`CDSL_MEDS.code_descriptions`.
 3. Unless ``--no-enrich`` is given, ``suMEDS-enrich`` enriches that file in place with the rules
    registered as ``CDSL`` and every argument after the ``--``. suMEDS only fills what is still
-   missing, so the dataset's own descriptions always win.
+   missing, so the dataset's own descriptions always win. It runs with ``--soft-fail``: if it fails
+   (without internet, for example), the file is left as it was, ``metadata/dataset.json`` records
+   the failure and the command that enriches it later, and the run still succeeds. ``-- --strict``
+   makes a failed enrichment an error.
 
 The raw files are never modified.
 """
@@ -54,9 +57,11 @@ def run() -> int:
     codes = Path(output or ".").resolve() / "metadata" / "codes.parquet"
     enrich_argv = [str(codes), "-o", str(codes), "--rules", RULES, *enrich_args]
     enrich = NO_ENRICH not in args[:cut]
-    if enrich:  # Bad suMEDS options or rules fail now, not after the pipeline.
-        build_enrich_parser().parse_args(enrich_argv)
-        sumeds.load_rules(RULES)
+    if enrich:  # Bad suMEDS options or rules fail now, not after the pipeline; both checks are local.
+        options = build_enrich_parser().parse_args(enrich_argv)
+        sumeds.load_rules(options.rules)
+        if options.soft_fail is None:  # Neither --soft-fail nor --strict given.
+            enrich_argv.append("--soft-fail")
 
     from MEDS_extract.run.cli import main as meds_extract_run
 

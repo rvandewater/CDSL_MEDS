@@ -4,20 +4,23 @@ This package registers its rules in suMEDS's ``sumeds.rules`` entry-point group 
 as its MEDS-Extract spec, ``CDSL``, and the runner enriches with them as its last step. The
 ontology source is a tiny pack repository in suMEDS's ``sumeds-ontologies/0.1`` layout, built here
 with made-up titles for the synthetic codes of ``conftest.py`` (and their ancestors), so the test
-reads nothing over the network and does not depend on the published packs.
+reads nothing over the network and does not depend on the published packs. An empty pack source
+stands in for a site without internet access, where the enrichment soft-fails.
 """
 
 import csv
 import hashlib
 import io
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import polars as pl
 import pyarrow.parquet as pq
 import pytest
 from conftest import run_etl
-from meds import CodeMetadataSchema
+from meds import CodeMetadataSchema, DatasetMetadataSchema
 
 # vocabulary -> release -> code -> parent (None for a root).
 PACKS = {
@@ -108,6 +111,13 @@ def read_codes(output: Path) -> dict[str, dict]:
     return {row["code"]: row for row in pq.read_table(output / "metadata/codes.parquet").to_pylist()}
 
 
+def read_record(output: Path) -> dict:
+    """The enrichment record suMEDS writes into ``metadata/dataset.json``, which must stay valid MEDS."""
+    metadata = json.loads((output / "metadata/dataset.json").read_text())
+    DatasetMetadataSchema.validate(metadata)
+    return metadata["sumeds_enrichment"]
+
+
 def test_codes_parquet_is_replaced_by_valid_meds_metadata(enriched_output: Path):
     metadata = enriched_output / "metadata"
     CodeMetadataSchema.validate(pq.read_table(metadata / "codes.parquet"))
@@ -170,3 +180,47 @@ def test_bad_sumeds_options_fail_before_the_pipeline(tmp_path, raw_dir: Path):
     assert result.returncode != 0
     assert "--no-such-option" in result.stderr
     assert not output.exists()
+
+
+def test_dataset_json_records_the_enrichment(enriched_output: Path):
+    record = read_record(enriched_output)
+    assert record["enriched"] is True
+    assert record["rules"] == "CDSL"
+    assert record["ontology_source"] == "local"
+    coverage = record["coverage"]
+    assert coverage["codes"] == len(read_codes(enriched_output))
+    assert coverage["described"][1] > coverage["described"][0]
+    assert coverage["with_parent_codes"][1] > coverage["with_parent_codes"][0]
+
+
+def test_a_failed_enrichment_keeps_the_build_and_can_be_retried(
+    tmp_path, raw_dir: Path, plain_output: Path, enriched_output: Path, ontology_source: Path
+):
+    """Without packs (as without internet) the run still succeeds; ``suMEDS-enrich OUT`` finishes it."""
+    output, no_packs = tmp_path / "meds", tmp_path / "no-packs"
+    no_packs.mkdir()
+    result = run_etl(output, raw_dir, "--", "--ontology-source", str(no_packs))
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert "once the cause is fixed, enrich it with" in result.stderr
+    codes = output / "metadata/codes.parquet"
+    assert codes.read_bytes() == (plain_output / "metadata/codes.parquet").read_bytes()
+    record = read_record(output)
+    assert record["enriched"] is False
+    assert record["rules"] == "CDSL"
+    assert record["retry"].startswith("suMEDS-enrich <MEDS_ROOT>")
+
+    # The packs directory is a path, which the record never holds, so it is given again.
+    sumeds_enrich = str(Path(sys.executable).parent / "suMEDS-enrich")
+    retry = [sumeds_enrich, str(output), "--ontology-source", str(ontology_source)]
+    result = subprocess.run(retry, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert read_record(output)["enriched"] is True
+    assert pq.read_table(codes).equals(pq.read_table(enriched_output / "metadata/codes.parquet"))
+
+
+def test_strict_makes_a_failed_enrichment_an_error(tmp_path, raw_dir: Path):
+    no_packs = tmp_path / "no-packs"
+    no_packs.mkdir()
+    result = run_etl(tmp_path / "meds", raw_dir, "--", "--ontology-source", str(no_packs), "--strict")
+    assert result.returncode == 1
+    assert "suMEDS-enrich: error:" in result.stderr

@@ -22,11 +22,12 @@ classifiers = [
 # the raw data.
 # suMEDS adds vocabulary titles and parents to the code metadata, as the last step of
 # `MEDS_extract-CDSL`, with the rules registered below; 0.6 writes the relationship names as
-# code-to-name maps. It is capped below the next minor for the same reason (its rules format and
-# CLI are still 0.x).
+# code-to-name maps, and 0.6.1 adds the soft fail (a failed enrichment, e.g. without internet, leaves
+# the build as it was and exits 0) and the `sumeds_enrichment` record in `metadata/dataset.json`. It
+# is capped below the next minor for the same reason (its rules format and CLI are still 0.x).
 dependencies = [
     "MEDS-extract[download]>=0.8.0,<0.9",
-    "sumeds>=0.6,<0.7",
+    "sumeds>=0.6.1,<0.7",
 ]
 
 [project.scripts]
