@@ -38,22 +38,25 @@ meds-extract-download spec=CDSL output_dir=$RAW_INPUT_DIR
 MEDS_extract-CDSL spec=CDSL output_dir=$MEDS_OUTPUT_DIR do_download=false input_dir=$RAW_INPUT_DIR
 ```
 
-When you run this, the program will:
+`MEDS_extract-CDSL` gives the complete build. When you run this, the program will:
 
 1. Download the CDSL tables and DICOM metadata from PhysioNet into `$RAW_INPUT_DIR`, skipping `IMAGES/`.
-2. Stage a UTF-8 view of the input in `$MEDS_OUTPUT_DIR/.meds_extract_run/pre_meds` (see
-    [Input encoding](#input-encoding)). The downloaded files are not modified.
-3. Build the MEDS cohort from the staged files and write it to `$MEDS_OUTPUT_DIR` (`data/` and
-    `metadata/`). All transformations and metadata extraction are declared in
-    [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml).
-4. Fill in the code descriptions that MEDS-Extract cannot attach on its own (see
+2. Build the MEDS cohort with `meds-extract-run` and write it to `$MEDS_OUTPUT_DIR` (`data/` and
+    `metadata/`). All transformations, metadata extraction and the encodings of the input files (see
+    [Input encoding](#input-encoding)) are declared in
+    [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml). The downloaded files are
+    not modified.
+3. Fill in the code descriptions that MEDS-Extract cannot attach on its own (see
     [Code metadata](#code-metadata)).
+4. Enrich `metadata/codes.parquet` in place with suMEDS: official vocabulary titles and parent codes
+    (see [Enriching code metadata with suMEDS](#enriching-code-metadata-with-sumeds)). Pass
+    `--no-enrich` to skip this step.
 
 If you already have the PhysioNet release on disk, skip the first command and point `input_dir` at the
 directory that directly contains `patient_01.csv`.
 
-`MEDS_extract-CDSL` takes the same arguments as `meds-extract-run`. To parallelize the stages, pass a
-runner file:
+`MEDS_extract-CDSL` takes the same arguments as `meds-extract-run`; arguments after a `--` go to
+`suMEDS-enrich`. To parallelize the stages, pass a runner file:
 
 ```bash
 printf 'parallelize:\n  n_workers: 8\n  launcher: joblib\n' >runner.yaml
@@ -61,7 +64,12 @@ MEDS_extract-CDSL spec=CDSL output_dir=$MEDS_OUTPUT_DIR do_download=false \
 	input_dir=$RAW_INPUT_DIR stage_runner_fp=runner.yaml
 ```
 
-Run `meds-extract-run --help` for every option.
+Run `meds-extract-run --help` and `suMEDS-enrich --help` for every option.
+
+`meds-extract-run spec=CDSL` and `suMEDS-extract spec=CDSL` alone also run, but they skip step 3
+(`meds-extract-run` also skips step 4). The codes that step describes, the literal codes such as
+`HOSPITAL_ADMISSION` and the slot-coded diagnosis and neoplasm codes, then lack the release's own
+descriptions, so use `MEDS_extract-CDSL` for a complete build.
 
 ## How this ETL is defined
 
@@ -69,21 +77,22 @@ The whole ETL is one MESSY (MEDS-Extract Specification Syntax YAML) file,
 [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml). It declares:
 
 - **`sources:`**: where the raw data lives (the PhysioNet release, excluding `IMAGES/**`).
-- **`etl:`**: the dataset name and sharding options.
+- **`etl:`**: the dataset name, sharding options and the codecs of the Latin-1 input files.
 - **One block per raw table**: how each row becomes one or more MEDS events, and which dictionary
     tables describe the resulting codes.
 
 `pyproject.toml` registers the file with MEDS-Extract's `MEDS_extract.pipelines` entry-point group under
-the name `CDSL`. That registration is what makes `spec=CDSL` work.
+the name `CDSL`. That registration is what makes `spec=CDSL` work. A second entry point registers
+[`src/CDSL_MEDS/sumeds_rules.yaml`](src/CDSL_MEDS/sumeds_rules.yaml) with suMEDS's `sumeds.rules` group
+under the same name, which is how `MEDS_extract-CDSL` and `--rules CDSL` find the enrichment rules.
 
 ### Input encoding
 
-`atc7.csv`, `medication_05.csv` and `vital_signs_04.csv` are Latin-1 encoded, while MEDS-Extract's CSV
-reader requires UTF-8. [`src/CDSL_MEDS/pre_meds.py`](src/CDSL_MEDS/pre_meds.py) handles this:
-`MEDS_extract-CDSL` transcodes those three files into a staging directory, hard-links every other file,
-and then runs `meds-extract-run` on the staged copy. Because of this step and the
-[code metadata](#code-metadata) step that follows the pipeline, run the ETL with `MEDS_extract-CDSL`
-rather than `meds-extract-run` directly.
+`atc7.csv`, `medication_05.csv` and `vital_signs_04.csv` are Latin-1 encoded; every other file the ETL
+reads is UTF-8. The `etl.encoding` block of the config names the codec of those three files, and
+MEDS-Extract (0.8 or later) decodes them as it reads them, so no transcoded copy of the input is needed.
+They are declared rather than left to MEDS-Extract's encoding detection, which would decode them as
+cp1252.
 
 ## Events
 
@@ -155,17 +164,29 @@ with the dot where OMOP puts it.
 
 ### Enriching code metadata with suMEDS
 
-Vocabulary work is maintained once, in [suMEDS](https://github.com/rvandewater/SumMEDS), rather than in
-every ETL. This package ships the rules for it,
-[`src/CDSL_MEDS/sumeds_rules.yaml`](src/CDSL_MEDS/sumeds_rules.yaml):
+Vocabulary work is maintained once, in [suMEDS](https://github.com/rvandewater/SumMEDS) (installed with
+this package), rather than in every ETL. This package ships the rules for it,
+[`src/CDSL_MEDS/sumeds_rules.yaml`](src/CDSL_MEDS/sumeds_rules.yaml), registered in suMEDS's
+`sumeds.rules` entry-point group under the same name as the MEDS-Extract spec, `CDSL`.
+`MEDS_extract-CDSL` enriches `metadata/codes.parquet` with them as its last step, after the release's
+own descriptions are filled, and replaces the file only once the enriched table is complete. By default
+the ICD-10-CM and ICD-10-PCS data come from suMEDS's ontology packs, fetched from GitHub on first use and
+cached; no Athena download is needed. suMEDS options go after a `--`:
 
 ```bash
-pip install "sumeds>=0.4"
-suMEDS-enrich $MEDS_OUTPUT_DIR/metadata/codes.parquet -o codes_enriched.parquet \
-	--rules src/CDSL_MEDS/sumeds_rules.yaml
-# Optional: validate ATC and ICD-O-3 codes against your own OHDSI Athena download.
-suMEDS-enrich $MEDS_OUTPUT_DIR/metadata/codes.parquet -o codes_enriched.parquet \
-	--rules src/CDSL_MEDS/sumeds_rules.yaml --athena-csv /path/to/athena
+# Also validate ATC and ICD-O-3 codes against your own OHDSI Athena download:
+MEDS_extract-CDSL spec=CDSL output_dir=$MEDS_OUTPUT_DIR do_download=false input_dir=$RAW_INPUT_DIR \
+	-- --athena-csv /path/to/athena
+# Use only already cached packs (no network):
+MEDS_extract-CDSL spec=CDSL output_dir=$MEDS_OUTPUT_DIR do_download=false input_dir=$RAW_INPUT_DIR \
+	-- --offline
+```
+
+To enrich the `codes.parquet` of an existing build, for example one made with `--no-enrich`:
+
+```bash
+suMEDS-enrich "$MEDS_OUTPUT_DIR/metadata/codes.parquet" -o "$MEDS_OUTPUT_DIR/metadata/codes.parquet" \
+	--rules CDSL
 ```
 
 ICD-10-CM and ICD-10-PCS codes are validated against suMEDS's versioned ontology data
@@ -183,8 +204,10 @@ ICD-10-CM and ICD-10-PCS codes are validated against suMEDS's versioned ontology
 - Same-dataset parents: a diagnosis or procedure code gets the nearest shorter code of the same family
     that CDSL contains (`DIAGNOSIS_ICD10//J18` for `DIAGNOSIS_ICD10//J18.9`).
 
-suMEDS fills only missing descriptions, never removes or rewrites existing metadata, and writes parents
-as `VOCABULARY//CODE`. The ETL alone no longer emits these parent codes or the ICD-10-PCS descriptions.
+suMEDS fills only missing descriptions, so the release's own descriptions are kept, and it never removes
+or rewrites existing metadata. It writes parents as `VOCABULARY//CODE`, and the titles of the parents it
+knows in `parent_names`, a map from parent code to title. `MEDS_extract-CDSL --no-enrich` writes none of
+these parents or the ICD-10-PCS descriptions.
 
 ### Data notes
 
@@ -204,13 +227,17 @@ as `VOCABULARY//CODE`. The ETL alone no longer emits these parent codes or the I
 
 ## Testing
 
-`tests/test_cdsl_etl.py` checks that the config loads and excludes `IMAGES/`, builds a minimal raw
-fixture from the columns the config needs, runs `MEDS_extract-CDSL` over it (every code but the
-ICD-10-PCS procedures described, no parent codes, valid MEDS code metadata), and checks the Latin-1
-staging step. `tests/test_code_descriptions.py` checks that the literal-code table is complete and
-sourced, that every other code family has a description route, and that the post-pipeline fill keeps
-existing values. `tests/test_sumeds_rules.py` loads the rules with suMEDS and checks what example codes
-built from the config's code templates resolve to. The [synthetic ETL
+`tests/conftest.py` builds a minimal raw fixture from the columns the config needs, with the Latin-1
+tables written in Latin-1. `tests/test_cdsl_etl.py` checks that the config loads and excludes `IMAGES/`,
+and runs `MEDS_extract-CDSL --no-enrich` over the fixture (every code but the ICD-10-PCS procedures
+described, no parent codes, valid MEDS code metadata, Latin-1 text decoded).
+`tests/test_run_with_enrichment.py` runs `MEDS_extract-CDSL` with the enrichment, offline against a tiny
+synthetic ontology pack, and checks that suMEDS adds titles and parents without changing the release's
+own descriptions or the events. `tests/test_code_descriptions.py` checks that the literal-code table is
+complete and sourced, that every other code family has a description route, and that the post-pipeline
+fill keeps existing values. `tests/test_sumeds_rules.py` checks that the rules are registered as `CDSL`
+and load in suMEDS, and what example codes built from the config's code templates resolve to. The
+[synthetic ETL
 workflow](.github/workflows/synthetic-etl.yaml) also generates raw files straight from the config with
 [MESSY-synth](https://github.com/rvandewater/MESSY_synth) and fails if any event block yields no events.
 
@@ -224,9 +251,10 @@ uv run pre-commit run --all-files
 
 [`tests/regression/full_summary_stats.json`](tests/regression/full_summary_stats.json) is a
 [meds_summary_stats](https://github.com/Medical-Event-Data-Standard/meds_summary_stats) fingerprint of
-the MEDS dataset this ETL builds from the full CDSL 1.0.0 release: subject, event and measurement
-counts, digests of the code vocabulary, per-subject, value and time distributions, code-metadata
-coverage, the splits and the schema. It names no code and reports no cell of fewer than 20 subjects and
+the MEDS dataset this ETL builds from the full CDSL 1.0.0 release with `MEDS_extract-CDSL`, so its
+code-metadata coverage includes the suMEDS enrichment. It covers subject, event and measurement counts,
+digests of the code vocabulary, per-subject, value and time distributions, code-metadata coverage, the
+splits and the schema. It names no code and reports no cell of fewer than 20 subjects and
 no minimum or maximum, which is what makes it safe to publish. Because it is committed next to the ETL,
 its diff shows what an ETL change did to the output, and two ETL versions can be compared without
 access to the data.
@@ -245,8 +273,9 @@ Both print how the statistics changed against the committed baseline before over
 [`tests/regression/policy.yaml`](tests/regression/policy.yaml) flags an error. Rebuilding the same
 commit reproduces the baseline exactly, so any finding is a change in the output. CI cannot rebuild the
 credentialed release, so the [Summary stats workflow](.github/workflows/summary-stats.yaml) only warns
-when a pull request changes `src/` without regenerating the baseline. A MEDS-Extract or polars upgrade
-can also move the output, so check it with `--compare`.
+when a pull request changes `src/` (the config, the runner or the suMEDS rules) without regenerating the
+baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so check it with
+`--compare`.
 
 ## Citation
 

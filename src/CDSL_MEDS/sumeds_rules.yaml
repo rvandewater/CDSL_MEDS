@@ -1,10 +1,11 @@
 # suMEDS enrichment rules for CDSL_MEDS code metadata (https://github.com/rvandewater/SumMEDS).
 #
 # The ETL describes codes from CDSL's own tables and documentation. Vocabulary parent codes, and the
-# official ICD-10-CM / ICD-10-PCS titles of codes the ETL leaves undescribed, come from suMEDS:
+# official ICD-10-CM / ICD-10-PCS titles of codes the ETL leaves undescribed, come from suMEDS.
+# pyproject.toml registers this file in suMEDS's `sumeds.rules` group as `CDSL`, and
+# `MEDS_extract-CDSL` enriches with it as its last step. To enrich an existing build:
 #
-#   suMEDS-enrich $MEDS_OUTPUT_DIR/metadata/codes.parquet -o codes_enriched.parquet \
-#     --rules src/CDSL_MEDS/sumeds_rules.yaml
+#   suMEDS-enrich "$OUT/metadata/codes.parquet" -o "$OUT/metadata/codes.parquet" --rules CDSL
 #
 # Every pattern matches one code layout of `event_configs.yaml` exactly; tests/test_sumeds_rules.py
 # checks them against example codes built from that config.

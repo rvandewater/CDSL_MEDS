@@ -30,9 +30,9 @@ or discharge time.
 
 ## Input preparation and validation
 
-`atc7.csv`, `medication_05.csv`, and `vital_signs_04.csv` contain Latin-1 bytes.
-`MEDS_extract-CDSL` invokes `CDSL_MEDS.pre_meds` first, creating a UTF-8 staging view
-without modifying the downloaded files.
+`atc7.csv`, `medication_05.csv`, and `vital_signs_04.csv` contain Latin-1 bytes. The
+config declares their codec in `etl.encoding`, and MEDS-Extract decodes them without
+modifying the downloaded files.
 
 Validate both the configuration and emitted artifacts:
 

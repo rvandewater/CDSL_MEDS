@@ -44,12 +44,20 @@ jobs:
         run: uv sync --locked
 
       - name: Generate and extract synthetic data
+        # MESSY-synth requires MEDS-Extract <0.8, while the ETL runs on 0.8, so it runs in a tool
+        # environment of its own, on a copy of the spec without the per-source `etl.encoding`
+        # mapping that 0.7 rejects (the generated files are UTF-8 anyway). That is safe while the
+        # spec uses no other syntax new in 0.8 (such as `_table.joins`); the extraction itself runs
+        # with this project's locked MEDS-Extract and the full spec.
         run: |
+          uv run --locked python -c 'import sys, yaml; c = yaml.safe_load(open(sys.argv[1])); del c["etl"]["encoding"]; yaml.safe_dump(c, open(sys.argv[2], "w"), sort_keys=False)' \
+            ./src/CDSL_MEDS/event_configs.yaml ./synth_spec.yaml
           # 0.0.1 cannot render chrono `%.f` or f-string date+time timestamps, which this spec
           # uses; pin the first commit that can until a newer MESSY_synth release is out.
-          uv pip install "MESSY_synth @ git+https://github.com/rvandewater/MESSY_synth@a3ac4d9908826f69667501e36c2d5b61355141d5"
-          uv run MESSY-synth ./src/CDSL_MEDS/event_configs.yaml -o raw_synthetic/ --explain
-          uv run meds-extract-run spec=CDSL output_dir=./CDSL_meds_synth \
+          uvx --python ${{ matrix.python-version }} \
+            --from "MESSY_synth @ git+https://github.com/rvandewater/MESSY_synth@a3ac4d9908826f69667501e36c2d5b61355141d5" \
+            MESSY-synth ./synth_spec.yaml -o raw_synthetic/ --explain
+          uv run --locked meds-extract-run spec=CDSL output_dir=./CDSL_meds_synth \
             input_dir=raw_synthetic do_download=false
           for f in dataset.json codes.parquet subject_splits.parquet; do
             test -f "CDSL_meds_synth/metadata/$f"

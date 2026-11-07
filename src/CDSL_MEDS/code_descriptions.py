@@ -17,7 +17,7 @@ of codes cannot be described there, so ``MEDS_extract-CDSL`` fills them into the
 
 Vocabulary parent codes (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC), and the official titles of the
 ICD-10-CM and ICD-10-PCS codes the release does not describe, are not added here: suMEDS adds
-them with the rules in ``sumeds_rules.yaml``.
+them with the rules in ``sumeds_rules.yaml``, which ``MEDS_extract-CDSL`` runs after this fill.
 
 Only missing values are filled: an extracted description always wins, no code is added, and
 running the fill twice changes nothing.

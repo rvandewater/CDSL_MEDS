@@ -6,11 +6,18 @@
 # codes and the slot-coded diagnosis and neoplasm codes cannot carry `_metadata` (no components to
 # join on; one code emitted by several slot events has several code templates), so
 # `MEDS_extract-CDSL` describes them after the pipeline (see `code_descriptions.py`). Vocabulary
-# parent codes (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC) come from suMEDS (`sumeds_rules.yaml`).
+# parent codes (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC) come from suMEDS (`sumeds_rules.yaml`), which
+# `MEDS_extract-CDSL` runs last.
 
 etl:
   dataset_name: CDSL
   n_subjects_per_shard: 1000
+  # These three tables of the release are Latin-1; every other source the ETL reads is UTF-8. They
+  # are declared, not left to `auto` detection, which would decode them as cp1252.
+  encoding:
+    atc7: latin-1
+    medication_05: latin-1
+    vital_signs_04: latin-1
 
 _defaults:
   subject_id: $patient_id

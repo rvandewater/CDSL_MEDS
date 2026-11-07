@@ -15,7 +15,19 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["meds-extract[download]>=0.7.1,<0.8"]
+# Capped below the next minor: MEDS-Extract 0.x minors are breaking (MESSY syntax, runner CLI), so
+# raise this deliberately when migrating. 0.8 is the first release where `etl.encoding` can name a
+# codec per source, `_metadata` dictionary tables included, which CDSL's three Latin-1 tables need.
+# The `[download]` extra provides `meds-extract-download`, which `meds-extract-run` spawns to stage
+# the raw data.
+# suMEDS adds vocabulary titles and parents to the code metadata, as the last step of
+# `MEDS_extract-CDSL`, with the rules registered below; 0.6 writes the relationship names as
+# code-to-name maps. It is capped below the next minor for the same reason (its rules format and
+# CLI are still 0.x).
+dependencies = [
+    "MEDS-extract[download]>=0.8.0,<0.9",
+    "sumeds>=0.6,<0.7",
+]
 
 [project.scripts]
 MEDS_extract-CDSL = "CDSL_MEDS.pre_meds:run"
@@ -27,12 +39,15 @@ dev = [
     "pytest~=9.0",
     "pytest-rerunfailures==16.1",
     "shfmt-py==3.12.0.2",
-    # tests/test_sumeds_rules.py loads the packaged rules with suMEDS itself.
-    "sumeds>=0.4",
 ]
 
 [project.entry-points."MEDS_extract.pipelines"]
 CDSL = "CDSL_MEDS:event_configs.yaml"
+
+# Registers the suMEDS rules under the same name, so `--rules CDSL` finds them in any suMEDS
+# command, and `MEDS_extract-CDSL` enriches with them.
+[project.entry-points."sumeds.rules"]
+CDSL = "CDSL_MEDS:sumeds_rules.yaml"
 
 [project.urls]
 Homepage = "https://physionet.org/content/covid-data-shared-learning/1.0.0/"
