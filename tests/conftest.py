@@ -1,6 +1,7 @@
 """A minimal synthetic CDSL release, built from the columns the config needs, and the ETL run over it."""
 
 import csv
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -46,11 +47,13 @@ def value_for(column):
     return "X"
 
 
-def run_etl(output: Path, raw: Path, *args: str) -> subprocess.CompletedProcess:
-    """Run ``MEDS_extract-CDSL spec=CDSL`` over ``raw`` into ``output``, with extra ``args``."""
+def run_etl(
+    output: Path, raw: Path, *args: str, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess:
+    """Run ``meds-extract-run spec=CDSL`` over ``raw`` into ``output``, with extra ``args`` and ``env``."""
     return subprocess.run(
         [
-            str(Path(sys.executable).parent / "MEDS_extract-CDSL"),
+            str(Path(sys.executable).parent / "meds-extract-run"),
             "spec=CDSL",
             f"output_dir={output}",
             "do_download=false",
@@ -60,6 +63,7 @@ def run_etl(output: Path, raw: Path, *args: str) -> subprocess.CompletedProcess:
         cwd=ROOT,
         capture_output=True,
         text=True,
+        env=None if env is None else {**os.environ, **env},
     )
 
 
@@ -88,8 +92,8 @@ def raw_dir(tmp_path_factory) -> Path:
 
 @pytest.fixture(scope="session")
 def plain_output(tmp_path_factory, raw_dir: Path) -> Path:
-    """The ETL without the suMEDS enrichment (``--no-enrich``)."""
+    """The ETL without the suMEDS enrichment stage (``skip_stages=[sumeds_enrich]``)."""
     output = tmp_path_factory.mktemp("cdsl_plain") / "meds"
-    result = run_etl(output, raw_dir, "--no-enrich")
+    result = run_etl(output, raw_dir, "skip_stages=[sumeds_enrich]")
     assert result.returncode == 0, result.stderr[-2000:]
     return output

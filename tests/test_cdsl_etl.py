@@ -1,9 +1,11 @@
+import json
+
 import polars as pl
 import pyarrow.parquet as pq
 import pytest
 import yaml
 from conftest import ATC7_NAME, COMMERCIAL_NAME, ROOT
-from meds import CodeMetadataSchema
+from meds import CodeMetadataSchema, DatasetMetadataSchema
 from MEDS_extract.config import MessyConfig
 
 
@@ -18,7 +20,7 @@ def test_config_loads_and_excludes_images():
 
 
 def test_etl_runs_on_a_minimal_valid_fixture(plain_output):
-    """``MEDS_extract-CDSL --no-enrich``: the ETL and its own descriptions, without suMEDS."""
+    """``skip_stages=[sumeds_enrich]``: the ETL and its own descriptions, without suMEDS."""
     output = plain_output
     assert (output / "metadata/dataset.json").is_file()
     assert list((output / "data").glob("**/*.parquet"))
@@ -46,3 +48,22 @@ def test_latin1_sources_are_decoded(plain_output, raw_dir):
     assert medications.height and set(medications["text_value"]) == {COMMERCIAL_NAME}
     with pytest.raises(UnicodeDecodeError):
         (raw_dir / "atc7.csv").read_text(encoding="utf-8")
+
+
+def test_dataset_json_describes_the_release_and_the_extra_columns(plain_output):
+    """The `etl:` descriptors reach `metadata/dataset.json`, and every extra column is accounted for."""
+    metadata = json.loads((plain_output / "metadata/dataset.json").read_text())
+    DatasetMetadataSchema.validate(metadata)
+    assert metadata["license"] == "PhysioNet Contributor Review Health Data License 1.5.0"
+    assert metadata["description_uri"] == "https://physionet.org/content/covid-data-shared-learning/1.0.0/"
+    assert metadata["raw_source_id_columns"] == [
+        "lab_id",
+        "medication_id",
+        "vital_sign_id",
+        "study_id",
+        "image_id",
+    ]
+    events = pl.concat([pl.read_parquet(fp) for fp in (plain_output / "data").rglob("*.parquet")])
+    core = {"subject_id", "time", "code", "numeric_value", "text_value"}
+    listed = set(metadata["raw_source_id_columns"]) | set(metadata["other_extension_columns"])
+    assert listed == set(events.columns) - core

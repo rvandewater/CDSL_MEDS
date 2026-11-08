@@ -2,12 +2,14 @@
 # CDSL timestamps are deidentified but retain within-patient chronology. The diagnosis
 # and procedure tables contain no time, so their events use the shared pseudotime anchor.
 #
-# Code metadata: `_metadata` blocks describe every code family emitted by a single event. Literal
-# codes and the slot-coded diagnosis and neoplasm codes cannot carry `_metadata` (no components to
-# join on; one code emitted by several slot events has several code templates), so
-# `MEDS_extract-CDSL` describes them after the pipeline (see `code_descriptions.py`). Vocabulary
-# parent codes (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC) come from suMEDS (`sumeds_rules.yaml`), which
-# `MEDS_extract-CDSL` runs last.
+# Code metadata: `_metadata` blocks describe every code that one kind of event emits, literal codes
+# included (constant `_self` blocks; the `cdsl-docs:` comments give the CDSL documentation each
+# description paraphrases). The slot-coded diagnosis and neoplasm codes cannot carry `_metadata`: one
+# code emitted by several slot events (`dia_ppal`, `dia_02`, ...) has several code templates, which
+# the metadata stage rejects. The `cdsl_describe_slot_codes` post-stage describes them after the
+# pipeline (see `code_descriptions.py`). Vocabulary titles and parent codes (ICD-10-CM, ICD-10-PCS,
+# ICD-O-3, ATC) come from the suMEDS rules in `sumeds_rules.yaml`, in the `sumeds_enrich` post-stage
+# that runs last. `meds-extract-run spec=CDSL ...` runs all of it.
 
 etl:
   dataset_name: CDSL
@@ -18,6 +20,26 @@ etl:
     atc7: latin-1
     medication_05: latin-1
     vital_signs_04: latin-1
+  # metadata/dataset.json: the release's license and page on PhysioNet, and the extra columns that are
+  # identifiers of raw rows (the lab, medication and vital-sign row ids, and the DICOM study and image
+  # ids). Every other extra column is listed under `other_extension_columns`.
+  license: PhysioNet Contributor Review Health Data License 1.5.0
+  description_uri: https://physionet.org/content/covid-data-shared-learning/1.0.0/
+  raw_source_id_columns:
+    - lab_id
+    - medication_id
+    - vital_sign_id
+    - study_id
+    - image_id
+  # Run after the canonical stages, in this order. Leave one out with `skip_stages=[NAME]`.
+  post_stages:
+    # Describes DIAGNOSIS_ICD10// codes from the release's icd10_codes_dict.txt, and NEOPLASM_ICDO3//
+    # codes with a template (CDSL_MEDS.code_descriptions).
+    - cdsl_describe_slot_codes
+    # Adds vocabulary titles and parent codes with suMEDS and records it in metadata/dataset.json. It
+    # soft-fails (e.g. without internet); `suMEDS-enrich OUTPUT_DIR` finishes it later.
+    - sumeds_enrich:
+        rules: CDSL
 
 _defaults:
   subject_id: $patient_id
@@ -26,6 +48,10 @@ patient_01:
   hospital_admission:
     code: HOSPITAL_ADMISSION
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
+    # cdsl-docs: patient_01 hospital admission date (admission_d_inpat)
+    _metadata:
+      _self:
+        description: '"Hospital admission (CDSL patient_01.admission_d_inpat)"'
 
   hospital_discharge:
     code: f"HOSPITAL_DISCHARGE//{$destin_discharge ?? 'UNKNOWN'}"
@@ -39,15 +65,28 @@ patient_01:
   icu_admission:
     code: ICU_ADMISSION
     time: $icu_date_in::?"%Y-%m-%d %H:%M:%S%.f"
+    # cdsl-docs: patient_01 ICU admission date (icu_date_in)
+    _metadata:
+      _self:
+        description: '"ICU admission (CDSL patient_01.icu_date_in)"'
 
   icu_discharge:
     code: ICU_DISCHARGE
     time: $icu_date_out::?"%Y-%m-%d %H:%M:%S%.f"
+    # cdsl-docs: patient_01 ICU discharge date (icu_date_out)
+    _metadata:
+      _self:
+        description: '"ICU discharge (CDSL patient_01.icu_date_out)"'
 
   age_at_admission:
     code: AGE_AT_ADMISSION
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $age::?float64
+    # cdsl-docs: patient_01 demographics (age); placement from this config
+    _metadata:
+      _self:
+        description: >-
+          "Patient age, placed at hospital admission; numeric_value is the age (CDSL patient_01.age)"
 
   sex:
     code: f"SEX//{$sex}"
@@ -68,6 +107,12 @@ patient_01:
   emergency_visit:
     code: EMERGENCY_DEPARTMENT_VISIT
     time: f"{$admission_date_emerg[0:10]} {$time_admission_emerg}"::?"%Y-%m-%d %H:%M:%S"
+    # cdsl-docs: patient_01 ED visit date and time (admission_date_emerg; time_admission_emerg)
+    _metadata:
+      _self:
+        description: >-
+          "Emergency department visit that led to the hospital admission (CDSL
+          patient_01.admission_date_emerg, time_admission_emerg)"
 
   emergency_department:
     code: f"EMERGENCY_DEPARTMENT//{$department_emerg}"
@@ -89,71 +134,125 @@ patient_01:
   mechanical_ventilation:
     code: '"MECHANICAL_VENTILATION" if $mechvent == "Yes"'
     time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
+    # cdsl-docs: patient_01 mechvent; placement from this config
+    _metadata:
+      _self:
+        description: >-
+          "Mechanical ventilation during the hospital stay (CDSL patient_01.mechvent is Yes); placed at
+          hospital admission, not at the start of ventilation"
 
   emergency_first_systolic_blood_pressure:
     code: '"VITAL//SYSTOLIC_BLOOD_PRESSURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $bp_max_first_emerg::?float64
+    # cdsl-docs: vital_signs_04 maximum blood pressure (bp_max_ing); patient_01 ED vital signs
+    _metadata: &vital_systolic_blood_pressure
+      _self:
+        description: >-
+          "Systolic (maximum) blood pressure; unit not documented (CDSL vital_signs_04.bp_max_ing,
+          patient_01.bp_max_first_emerg, bp_max_last_emerg)"
 
   emergency_first_diastolic_blood_pressure:
     code: '"VITAL//DIASTOLIC_BLOOD_PRESSURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $bp_min_first_emerg::?float64
+    # cdsl-docs: vital_signs_04 minimum blood pressure (bp_min_ing); patient_01 ED vital signs
+    _metadata: &vital_diastolic_blood_pressure
+      _self:
+        description: >-
+          "Diastolic (minimum) blood pressure; unit not documented (CDSL vital_signs_04.bp_min_ing,
+          patient_01.bp_min_first_emerg, bp_min_last_emerg)"
 
   emergency_first_temperature:
     code: '"VITAL//TEMPERATURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $temp_first_emerg::?float64
+    # cdsl-docs: vital_signs_04 body temperature (temp_ing); patient_01 ED vital signs
+    _metadata: &vital_temperature
+      _self:
+        description: >-
+          "Body temperature; unit not documented (CDSL vital_signs_04.temp_ing, patient_01.temp_first_emerg,
+          temp_last_emerg)"
 
   emergency_first_heart_rate:
     code: '"VITAL//HEART_RATE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $hr_first_emerg::?float64
+    # cdsl-docs: vital_signs_04 heart rate (hr_ing); patient_01 ED vital signs
+    _metadata: &vital_heart_rate
+      _self:
+        description: >-
+          "Heart rate; unit not documented (CDSL vital_signs_04.hr_ing, patient_01.hr_first_emerg,
+          hr_last_emerg)"
 
   emergency_first_oxygen_saturation:
     code: '"VITAL//OXYGEN_SATURATION"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $sat_02_first_emerg::?float64
+    # cdsl-docs: vital_signs_04 oxygen saturation (sat_02_ing); patient_01 ED vital signs
+    _metadata: &vital_oxygen_saturation
+      _self:
+        description: >-
+          "Oxygen saturation; unit not documented (CDSL vital_signs_04.sat_02_ing,
+          patient_01.sat_02_first_emerg, sat_02_last_emerg)"
 
   emergency_first_blood_glucose:
     code: '"VITAL//BLOOD_GLUCOSE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $glu_first_emerg::?float64
+    # cdsl-docs: vital_signs_04 blood glucose level (glu_ing); patient_01 ED vital signs
+    _metadata: &vital_blood_glucose
+      _self:
+        description: >-
+          "Blood glucose level; unit not documented (CDSL vital_signs_04.glu_ing, patient_01.glu_first_emerg,
+          glu_last_emerg)"
 
   emergency_first_urine_output:
     code: '"VITAL//URINE_OUTPUT"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_first_emerg}"::?"%Y-%m-%d %H:%M"
     numeric_value: $diuresis_first_emerg::?float64
+    # cdsl-docs: patient_01 initial ED vital signs (diuresis_first_emerg)
+    _metadata:
+      _self:
+        description: >-
+          "Urine output (diuresis) at the first emergency department assessment; unit not documented (CDSL
+          patient_01.diuresis_first_emerg)"
 
   emergency_last_systolic_blood_pressure:
     code: '"VITAL//SYSTOLIC_BLOOD_PRESSURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $bp_max_last_emerg::?float64
+    _metadata: *vital_systolic_blood_pressure
 
   emergency_last_diastolic_blood_pressure:
     code: '"VITAL//DIASTOLIC_BLOOD_PRESSURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $bp_min_last_emerg::?float64
+    _metadata: *vital_diastolic_blood_pressure
 
   emergency_last_temperature:
     code: '"VITAL//TEMPERATURE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $temp_last_emerg::?float64
+    _metadata: *vital_temperature
 
   emergency_last_heart_rate:
     code: '"VITAL//HEART_RATE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $hr_last_emerg::?float64
+    _metadata: *vital_heart_rate
 
   emergency_last_oxygen_saturation:
     code: '"VITAL//OXYGEN_SATURATION"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $sat_02_last_emerg::?float64
+    _metadata: *vital_oxygen_saturation
 
   emergency_last_blood_glucose:
     code: '"VITAL//BLOOD_GLUCOSE"'
     time: f"{$admission_date_emerg[0:10]} {$time_constant_last_emerg}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $glu_last_emerg::?float64
+    _metadata: *vital_blood_glucose
 
 diagnosis_er_02:
   diagnosis_icd10_dia_ppal:
@@ -457,36 +556,42 @@ vital_signs_04:
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $bp_max_ing::?float64
     vital_sign_id: $vital_sign_id
+    _metadata: *vital_systolic_blood_pressure
 
   diastolic_blood_pressure:
     code: '"VITAL//DIASTOLIC_BLOOD_PRESSURE"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $bp_min_ing::?float64
     vital_sign_id: $vital_sign_id
+    _metadata: *vital_diastolic_blood_pressure
 
   temperature:
     code: '"VITAL//TEMPERATURE"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $temp_ing::?float64
     vital_sign_id: $vital_sign_id
+    _metadata: *vital_temperature
 
   heart_rate:
     code: '"VITAL//HEART_RATE"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $hr_ing::?float64
     vital_sign_id: $vital_sign_id
+    _metadata: *vital_heart_rate
 
   oxygen_saturation:
     code: '"VITAL//OXYGEN_SATURATION"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $sat_02_ing::?float64
     vital_sign_id: $vital_sign_id
+    _metadata: *vital_oxygen_saturation
 
   blood_glucose:
     code: '"VITAL//BLOOD_GLUCOSE"'
     time: f"{$constants_ing_date[0:10]} {$constants_ing_time}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $glu_ing::?float64
     vital_sign_id: $vital_sign_id
+    _metadata: *vital_blood_glucose
 
 CDSL-1.0.0-dicom-metadata:
   imaging:

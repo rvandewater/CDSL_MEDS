@@ -34,9 +34,9 @@ build() {
   local kind=$1 input=$2 output=$3
   case $kind in
     full)
-      # MEDS_extract-CDSL runs meds-extract-run, fills CDSL's own code descriptions, and then enriches
-      # metadata/codes.parquet with suMEDS, so the baseline covers the documented complete build.
-      uv run --frozen MEDS_extract-CDSL spec=CDSL do_download=false input_dir="$input" output_dir="$output" >&2 \
+      # meds-extract-run runs the spec's post-stages too: CDSL's own slot-code descriptions and the
+      # suMEDS enrichment, so the baseline covers the documented complete build.
+      uv run --frozen meds-extract-run spec=CDSL do_download=false input_dir="$input" output_dir="$output" >&2 \
         && echo "$output"
       ;;
     *) die "unknown kind '$kind' (expected one of: $KINDS)" ;;

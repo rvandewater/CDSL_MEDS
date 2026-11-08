@@ -117,7 +117,7 @@ def test_rules_file_is_packaged():
 
 
 def test_rules_are_registered_under_the_spec_name():
-    """`MEDS_extract-CDSL` and `suMEDS-enrich --rules CDSL` find the rules by this entry point."""
+    """The spec's `sumeds_enrich: {rules: CDSL}` and `suMEDS-enrich --rules CDSL` find them here."""
     assert registered_rules()["CDSL"] == "CDSL_MEDS:sumeds_rules.yaml"
     assert load_rules("CDSL") == load_rules(RULES_FP)
 

@@ -1,11 +1,13 @@
-"""``MEDS_extract-CDSL`` runs the ETL, fills CDSL's own descriptions, then enriches with suMEDS, offline.
+"""``meds-extract-run spec=CDSL`` runs the ETL, CDSL's own descriptions and the suMEDS enrichment, offline.
 
-This package registers its rules in suMEDS's ``sumeds.rules`` entry-point group under the same name
-as its MEDS-Extract spec, ``CDSL``, and the runner enriches with them as its last step. The
-ontology source is a tiny pack repository in suMEDS's ``sumeds-ontologies/0.1`` layout, built here
-with made-up titles for the synthetic codes of ``conftest.py`` (and their ancestors), so the test
-reads nothing over the network and does not depend on the published packs. An empty pack source
-stands in for a site without internet access, where the enrichment soft-fails.
+The spec's ``etl.post_stages`` run ``cdsl_describe_slot_codes`` and then suMEDS's ``sumeds_enrich``
+stage, with the rules this package registers in suMEDS's ``sumeds.rules`` entry-point group under the
+spec's name, ``CDSL``. The ontology source is a tiny pack repository in suMEDS's
+``sumeds-ontologies/0.1`` layout, built here with made-up titles for the synthetic codes of
+``conftest.py`` (and their ancestors), so the test reads nothing over the network and does not depend
+on the published packs. It reaches the stage as a runtime option, ``overrides=['++stage_cfg.X=Y']``,
+or through ``SUMEDS_ONTOLOGY_SOURCE``. An empty pack source stands in for a site without internet
+access, where the enrichment soft-fails.
 """
 
 import csv
@@ -98,10 +100,24 @@ def ontology_source(tmp_path_factory) -> Path:
     return root
 
 
+def stage_options(**options: str) -> str:
+    """``sumeds_enrich`` options for one run, as a ``meds-extract-run`` argument.
+
+    ``meds-extract-run`` passes ``overrides=`` to every stage of the pipeline, so ``++`` adds the key
+    to the stages that do not declare it (which ignore it) and sets it in the one that does.
+    """
+    return "overrides=[" + ",".join(f"'++stage_cfg.{name}={value}'" for name, value in options.items()) + "]"
+
+
+def pipeline_log(output: Path) -> str:
+    """The pipeline log, where the post-stages write their output."""
+    return (output / ".logs" / "pipeline.log").read_text()
+
+
 @pytest.fixture(scope="session")
 def enriched_output(tmp_path_factory, raw_dir: Path, ontology_source: Path) -> Path:
     output = tmp_path_factory.mktemp("cdsl_enriched") / "meds"
-    result = run_etl(output, raw_dir, "--", "--ontology-source", str(ontology_source))
+    result = run_etl(output, raw_dir, stage_options(ontology_source=ontology_source))
     assert result.returncode == 0, result.stderr[-2000:]
     return output
 
@@ -174,14 +190,6 @@ def test_vocabulary_codes_get_titles_and_parents(enriched_output: Path):
     assert not rows["HOSPITAL_ADMISSION"]["parent_codes"]
 
 
-def test_bad_sumeds_options_fail_before_the_pipeline(tmp_path, raw_dir: Path):
-    output = tmp_path / "meds"
-    result = run_etl(output, raw_dir, "--", "--no-such-option")
-    assert result.returncode != 0
-    assert "--no-such-option" in result.stderr
-    assert not output.exists()
-
-
 def test_dataset_json_records_the_enrichment(enriched_output: Path):
     record = read_record(enriched_output)
     assert record["enriched"] is True
@@ -193,21 +201,37 @@ def test_dataset_json_records_the_enrichment(enriched_output: Path):
     assert coverage["with_parent_codes"][1] > coverage["with_parent_codes"][0]
 
 
+def test_skipping_the_stage_leaves_no_record(plain_output: Path):
+    """``skip_stages=[sumeds_enrich]``: CDSL's own descriptions, no enrichment and no record."""
+    metadata = json.loads((plain_output / "metadata/dataset.json").read_text())
+    DatasetMetadataSchema.validate(metadata)
+    assert "sumeds_enrichment" not in metadata
+    logs = plain_output / ".logs"
+    assert (logs / "cdsl_describe_slot_codes.done").exists()
+    assert not (logs / "sumeds_enrich.done").exists()
+    assert not [code for code, row in read_codes(plain_output).items() if row.get("parent_codes")]
+
+
 def test_a_failed_enrichment_keeps_the_build_and_can_be_retried(
     tmp_path, raw_dir: Path, plain_output: Path, enriched_output: Path, ontology_source: Path
 ):
     """Without packs (as without internet) the run still succeeds; ``suMEDS-enrich OUT`` finishes it."""
     output, no_packs = tmp_path / "meds", tmp_path / "no-packs"
     no_packs.mkdir()
-    result = run_etl(output, raw_dir, "--", "--ontology-source", str(no_packs))
+    result = run_etl(output, raw_dir, env={"SUMEDS_ONTOLOGY_SOURCE": str(no_packs)})
     assert result.returncode == 0, result.stderr[-2000:]
-    assert "once the cause is fixed, enrich it with" in result.stderr
+    assert "once the cause is fixed, enrich it with" in pipeline_log(output)
     codes = output / "metadata/codes.parquet"
     assert codes.read_bytes() == (plain_output / "metadata/codes.parquet").read_bytes()
     record = read_record(output)
     assert record["enriched"] is False
     assert record["rules"] == "CDSL"
     assert record["retry"].startswith("suMEDS-enrich <MEDS_ROOT>")
+
+    # The stage is done, failed or not, so running the same command again does not retry it.
+    result = run_etl(output, raw_dir, env={"SUMEDS_ONTOLOGY_SOURCE": str(ontology_source)})
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert read_record(output)["enriched"] is False
 
     # The packs directory is a path, which the record never holds, so it is given again.
     sumeds_enrich = str(Path(sys.executable).parent / "suMEDS-enrich")
@@ -219,8 +243,10 @@ def test_a_failed_enrichment_keeps_the_build_and_can_be_retried(
 
 
 def test_strict_makes_a_failed_enrichment_an_error(tmp_path, raw_dir: Path):
-    no_packs = tmp_path / "no-packs"
+    output, no_packs = tmp_path / "meds", tmp_path / "no-packs"
     no_packs.mkdir()
-    result = run_etl(tmp_path / "meds", raw_dir, "--", "--ontology-source", str(no_packs), "--strict")
-    assert result.returncode == 1
-    assert "suMEDS-enrich: error:" in result.stderr
+    result = run_etl(output, raw_dir, stage_options(ontology_source=no_packs, strict="true"))
+    assert result.returncode != 0
+    assert "Stage sumeds_enrich failed" in result.stderr
+    assert "suMEDS-enrich: error:" in pipeline_log(output)
+    assert not (output / ".logs" / "sumeds_enrich.done").exists()

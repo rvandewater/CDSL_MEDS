@@ -38,7 +38,7 @@ Validate both the configuration and emitted artifacts:
 
 ```bash
 uv run pytest
-uv run MEDS_extract-CDSL spec=CDSL output_dir=cdsl_meds \
+uv run meds-extract-run spec=CDSL output_dir=cdsl_meds \
 	do_download=false input_dir=raw_cdsl/raw_cdsl
 ```
 
