@@ -228,13 +228,29 @@
     }
   },
   "dataset": {
-    "created_at": "2026-11-07T19:12:09.871053+00:00",
+    "created_at": "2026-11-08T00:57:54.724567+00:00",
     "dataset_name": "CDSL",
     "dataset_version": "1.0.0:0.0.1",
+    "description_uri": "https://physionet.org/content/covid-data-shared-learning/1.0.0/",
     "etl_name": "MEDS_transforms",
     "etl_version": "0.7.0",
+    "license": "PhysioNet Contributor Review Health Data License 1.5.0",
     "meds_version": "0.4.1",
+    "other_extension_columns": [
+      "source_block",
+      "reference_range",
+      "view_position",
+      "patient_position",
+      "spatial_resolution"
+    ],
     "present": true,
+    "raw_source_id_columns": [
+      "lab_id",
+      "medication_id",
+      "vital_sign_id",
+      "study_id",
+      "image_id"
+    ],
     "sumeds_enrichment": {
       "athena": false,
       "coverage": {
@@ -249,7 +265,7 @@
         ]
       },
       "enriched": true,
-      "enriched_at": "2026-11-07T19:12:11Z",
+      "enriched_at": "2026-11-08T00:57:57Z",
       "ontology_source": "rvandewater/sumeds-ontologies@v0.2.0",
       "options": {
         "child_codes": false,
@@ -261,8 +277,8 @@
         "sibling_codes": false
       },
       "rules": "CDSL",
-      "rules_sha256": "be195223cc2de02c1a8ee76c2e104e66322cd6991afa20581fad5fc316021c2e",
-      "sumeds_version": "0.6.1"
+      "rules_sha256": "4947644372c8fbae2afdfe0f0b0498464d25cf1e77d6d9eb486e39ee794871fd",
+      "sumeds_version": "0.6.2"
     }
   },
   "dataset_digest": {
@@ -273,22 +289,22 @@
       "data/train/2.parquet": "sha256:5641ae5c6da9b9146ee584f6001374361d0db4d1ef76c36dd6e1e8916d590b12",
       "data/train/3.parquet": "sha256:4339c0f528f299ecc0400e37bcb79b97648ba352a9e9744f363d39b0c9cd9a26",
       "data/tuning/0.parquet": "sha256:ba57576b4edd36cd93d47bddc9d0ca243a8eaca537e5903a98f518879bc4db3a",
-      "metadata/codes.parquet": "sha256:808ab108b9d9ffdc129b1d62bc63e1cb27ef8ae5a27ded99294617c82118d49d",
-      "metadata/dataset.json": "sha256:c31cf8975507481b944879b11ea4056985651a19c7d6296eb3b9ff06a5bc92ae",
+      "metadata/codes.parquet": "sha256:b2256231e511ffcc3d101fe10869fe56be1cc6dfe0753414407c0464295ff35c",
+      "metadata/dataset.json": "sha256:8699d3972c3d43155a5fe464697226ba1543bfba48a05910244d56f77ea52a4c",
       "metadata/subject_splits.parquet": "sha256:51c3dda11df49310cb03f72c4e110746b9308f29e2d2b416a965c92fb6de3a63"
     },
-    "code_metadata": "sha256:a95530b15b02075343509a3dc2844b059facddd43db7b757e0277b34fe04b8e1",
-    "combined": "sha256:10bdfd31baa49a0d27371e80b8e8d976794531af8803c98df4ed2ce16f485af7",
+    "code_metadata": "sha256:14d8c78481c4eed049cbfd5987574d3bf2cee0ec5f57f939e39c6d6c3f078159",
+    "combined": "sha256:e143996662a89b6748006088855fef7b2a62712c2c2a71817bef2bd43b1b35da",
     "data": {
       "digest": "sha256:6030de6167b5d4535c458dc4705f3eab0ad89ac9d7406af74da8ebbcc2709123",
       "n_files": 6
     },
-    "dataset_metadata": "sha256:dd9037cbad9a4b2e0c7daa1edab733038e1172c6c4b1c7354b6e93eb10c94c99",
+    "dataset_metadata": "sha256:42720f535bd248108498429233b41b3fe33b9f31c08fedfd56a31a16516be43b",
     "method": "files",
     "n_files": 9,
     "subject_splits": "sha256:85461169845de5ee15e9318412a87683b267c325018eaffa3b5413f919d88033"
   },
-  "extracted_at": "2026-11-07T19:12:12.819802",
+  "extracted_at": "2026-11-08T00:57:58.499523",
   "layout": {
     "code_metadata_columns": {
       "code": "String",
