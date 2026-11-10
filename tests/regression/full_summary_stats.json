@@ -1,23 +1,23 @@
 {
   "code_metadata": {
     "description_length": {
-      "mean": 57.0511,
-      "n": 4995,
+      "mean": 15.1576,
+      "n": 590,
       "quantiles": {
-        "p1": 8.0,
-        "p25": 30.0,
-        "p5": 10.0,
-        "p50": 51.0,
-        "p75": 82.0,
-        "p95": 118.0,
-        "p99": 153.0
+        "p1": 7.0,
+        "p25": 10.0,
+        "p5": 8.0,
+        "p50": 11.0,
+        "p75": 16.0,
+        "p95": 36.0,
+        "p99": 53.33
       },
-      "std": 35.3542
+      "std": 9.78568
     },
     "n_codes": 5621,
     "n_data_codes_missing_from_metadata": 0,
     "n_metadata_codes_absent_from_data": 0,
-    "n_with_description": 4995,
+    "n_with_description": 590,
     "n_with_parent_codes": null,
     "ontology": {
       "present": false
@@ -145,38 +145,38 @@
     }
   },
   "dataset": {
-    "created_at": "2026-11-04T15:20:05.435676+00:00",
+    "created_at": "2026-11-03T23:03:21.843982+00:00",
     "dataset_name": "CDSL",
     "dataset_version": "1.0.0:0.0.1",
     "etl_name": "MEDS_transforms",
-    "etl_version": "0.7.0",
+    "etl_version": "0.7.1",
     "meds_version": "0.4.1",
     "present": true
   },
   "dataset_digest": {
     "by_file": {
-      "data/held_out/0.parquet": "sha256:b6776e8eb9bf815925f3eea57c1cb32cacbf38cbbf6255f818c343704aacb3a1",
-      "data/train/0.parquet": "sha256:d454305629bb15cec7a4150912df5d5e69bedbb1b36034908cadd38219c04634",
-      "data/train/1.parquet": "sha256:6ef8543217c530e5c86183b7b607476d9e01d110a7bf4b899d40c50c8cc5bb7f",
-      "data/train/2.parquet": "sha256:5641ae5c6da9b9146ee584f6001374361d0db4d1ef76c36dd6e1e8916d590b12",
-      "data/train/3.parquet": "sha256:4339c0f528f299ecc0400e37bcb79b97648ba352a9e9744f363d39b0c9cd9a26",
-      "data/tuning/0.parquet": "sha256:ba57576b4edd36cd93d47bddc9d0ca243a8eaca537e5903a98f518879bc4db3a",
-      "metadata/codes.parquet": "sha256:aaa2c57090f6364fd8b640eb9503750577bee5ee2bc94431923499f41a012c67",
-      "metadata/dataset.json": "sha256:045b8d532f174a7d4d499d67aa420d1d657f02b1b4eac2d2b53f63f9e9e2b8d7",
-      "metadata/subject_splits.parquet": "sha256:51c3dda11df49310cb03f72c4e110746b9308f29e2d2b416a965c92fb6de3a63"
+      "data/held_out/0.parquet": "sha256:5bad2d82e1eee0848ad424bf12be54955d79c7defd7736db72a5f106c88bf15b",
+      "data/train/0.parquet": "sha256:957ceb325abc3e29ac893404cc9dd948f244f6dc24f18b5ab8f664359fd99cbf",
+      "data/train/1.parquet": "sha256:11a5592e619ff112529b707ef20ad476a4e3840955793f0989631c3d0a1c694c",
+      "data/train/2.parquet": "sha256:ba67c81369505f3a717dbcf3ff07893f60a6243c76e524f1cbdfee23116493c6",
+      "data/train/3.parquet": "sha256:1ec35b8bcac271e8ac0fe2e5bb51742c2c6324344b9bd1f72a6f9305d68004ed",
+      "data/tuning/0.parquet": "sha256:67b7a8779751512b90fbd692149ae3fd2af81a09898c2b82800f8d5f2e297296",
+      "metadata/codes.parquet": "sha256:c5bc91a984ef02afd85b1b7d05477f75aaaa51cb6f5e0699e64749c627f06208",
+      "metadata/dataset.json": "sha256:0cb3f22847b93e4135f2b19b7f4ba5257d4f78a1cd6655ab82ca4048717a0acb",
+      "metadata/subject_splits.parquet": "sha256:9c459f3af7b97a4aa6d9b9e4a5e8a3a20b1d2cfd6fd5906dda1da0e63f46c38c"
     },
-    "code_metadata": "sha256:a5a2e62f7f94143f288c1405f6c6422daed31c068546f0979939c987d3eaa507",
-    "combined": "sha256:72fb081ee5ece820171e4762b92f902959de2f3e86a2ce8de861e40c771a1f2d",
+    "code_metadata": "sha256:90dcd7d9256c2bae2a8cff99fd8e4ebf8e9668893a48ad9a5ff431687232ea18",
+    "combined": "sha256:c8542cc3b598b98c033c9ba4a94e97fb462e4358237848180691ed3c8e3dd3a0",
     "data": {
-      "digest": "sha256:6030de6167b5d4535c458dc4705f3eab0ad89ac9d7406af74da8ebbcc2709123",
+      "digest": "sha256:3ad067ac620002ea16cda4da034bae56add3099e227948be3e1a89362e26d492",
       "n_files": 6
     },
-    "dataset_metadata": "sha256:74b806b23d2059eb65f0748ef714d44bc1b17812f64f5cb36a10a24beb507230",
+    "dataset_metadata": "sha256:2253987ebbd2a3249f640a4bc16ed9bfca3359c1561b5a8676b181af770f2fcf",
     "method": "files",
     "n_files": 9,
-    "subject_splits": "sha256:85461169845de5ee15e9318412a87683b267c325018eaffa3b5413f919d88033"
+    "subject_splits": "sha256:a33134a81193e01d73efff1dfc1739c89e29f0d1e3c07037caed2c7110f8c050"
   },
-  "extracted_at": "2026-11-04T22:16:51.654119",
+  "extracted_at": "2026-11-10T22:15:27.397208",
   "layout": {
     "code_metadata_columns": {
       "code": "String",
@@ -246,8 +246,22 @@
     ],
     "shard_names_digest": "sha256:fc586c04d444e6dcbe64345ce2cf21d078d3b914d0e3af33f65513501967b85f"
   },
-  "meds_summary_stats_version": "0.0.3",
+  "meds_summary_stats_version": "0.0.4",
   "per_subject": {
+    "measurements_per_day": {
+      "mean": 0.118225,
+      "n": 4478,
+      "quantiles": {
+        "p1": 0.000792982,
+        "p25": 0.00425858,
+        "p5": 0.0018673,
+        "p50": 0.00703855,
+        "p75": 0.0140588,
+        "p95": 0.0543403,
+        "p99": 0.11099
+      },
+      "std": 2.09019
+    },
     "n_events": {
       "mean": 49.8558,
       "n": 4479,
@@ -325,7 +339,7 @@
     "n_subjects_in_splits_without_data": 0,
     "present": true
   },
-  "stats_schema_version": 1,
+  "stats_schema_version": 2,
   "time": {
     "by_year": {
       "1970": {
