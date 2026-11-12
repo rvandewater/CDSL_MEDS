@@ -14,7 +14,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 import yaml
-from sumeds import EnrichmentConfig, OntologyRules, enrich_metadata, load_rules
+from sumeds import EnrichmentConfig, OntologyRules, enrich_metadata, load_rules, registered_rules
 from sumeds.ontology import INDEX_SCHEMA
 
 PACKAGE_DIR = Path(__file__).parents[1] / "src" / "CDSL_MEDS"
@@ -114,6 +114,12 @@ def empty_ontology_source(tmp_path) -> str:
 def test_rules_file_is_packaged():
     assert "*.yaml" in Path(__file__).parents[1].joinpath("pyproject.toml").read_text()
     assert files("CDSL_MEDS").joinpath("sumeds_rules.yaml").is_file()
+
+
+def test_rules_are_registered_under_the_spec_name():
+    """The spec's `sumeds_enrich: {rules: CDSL}` and `suMEDS-enrich --rules CDSL` find them here."""
+    assert registered_rules()["CDSL"] == "CDSL_MEDS:sumeds_rules.yaml"
+    assert load_rules("CDSL") == load_rules(RULES_FP)
 
 
 def test_rules_load_in_sumeds():

@@ -1,6 +1,7 @@
-"""The packaged code metadata and the config blocks that describe codes stay in step."""
+"""Every code family of the config is described, and the ``cdsl_describe_slot_codes`` stage."""
 
 import doctest
+import re
 from pathlib import Path
 
 import polars as pl
@@ -9,18 +10,35 @@ import yaml
 from meds import CodeMetadataSchema
 
 from CDSL_MEDS import code_descriptions
-from CDSL_MEDS.code_descriptions import (
-    STATIC_DESCRIPTIONS_CSV,
-    apply_code_metadata,
-    read_icd10_dictionary,
-    read_static_code_descriptions,
-    slot_code_description,
-)
+from CDSL_MEDS.code_descriptions import apply_code_metadata, read_icd10_dictionary, slot_code_description
 
 CONFIG_FP = Path(__file__).parents[1] / "src" / "CDSL_MEDS" / "event_configs.yaml"
 # Code families emitted by one event per wide-table column, described by `slot_code_description`
 # (procedure codes are left to suMEDS).
 SLOT_FAMILIES = {"DIAGNOSIS_ICD10", "PROCEDURE_ICD10PCS", "NEOPLASM_ICDO3"}
+# The literal codes of the config, each described by a constant `_self` block.
+LITERAL_CODES = {
+    "HOSPITAL_ADMISSION",
+    "ICU_ADMISSION",
+    "ICU_DISCHARGE",
+    "AGE_AT_ADMISSION",
+    "EMERGENCY_DEPARTMENT_VISIT",
+    "MECHANICAL_VENTILATION",
+    *(
+        f"VITAL//{name}"
+        for name in (
+            "SYSTOLIC_BLOOD_PRESSURE",
+            "DIASTOLIC_BLOOD_PRESSURE",
+            "TEMPERATURE",
+            "HEART_RATE",
+            "OXYGEN_SATURATION",
+            "BLOOD_GLUCOSE",
+            "URINE_OUTPUT",
+        )
+    ),
+}
+# A constant dftly string: a double-quoted string without column references.
+CONSTANT = re.compile(r'^"[^"$]+"$')
 
 
 def _events():
@@ -39,18 +57,23 @@ def _literal_code(code: str) -> str | None:
     return None if "$" in head else head.strip('"')
 
 
-def test_static_table_is_complete_and_sourced():
-    table = pl.read_csv(STATIC_DESCRIPTIONS_CSV, infer_schema=False)
-    assert table.columns == ["code", "description", "source"]
-    assert not table["code"].is_duplicated().any()
-    assert table.select(pl.all().str.len_chars().min()).row(0) > (0, 0, 0)
+def test_every_literal_code_event_has_one_constant_description():
+    """Each event that emits a literal code describes it with a constant ``_self`` block.
 
-
-def test_static_table_covers_exactly_the_literal_codes():
-    literal = {c for _, _, e in _events() if (c := _literal_code(str(e["code"])))}
-    assert literal, "no literal codes found; the detection is stale"
-    static = set(read_static_code_descriptions()["code"])
-    assert literal == static, {"undescribed": literal - static, "stale": static - literal}
+    Events that emit the same literal share one description (a YAML alias), so ``codes.parquet`` gets
+    exactly one per code.
+    """
+    descriptions: dict[str, set[str]] = {}
+    for table, name, event in _events():
+        if not (code := _literal_code(str(event["code"]))):
+            continue
+        blocks = event.get("_metadata", {})
+        assert set(blocks) == {"_self"}, f"{table}/{name}: literal codes take only a _self block"
+        description = blocks["_self"]["description"]
+        assert CONSTANT.match(description), f"{table}/{name}: {description!r} is not a constant string"
+        descriptions.setdefault(code, set()).add(description)
+    assert set(descriptions) == LITERAL_CODES
+    assert all(len(d) == 1 for d in descriptions.values()), descriptions
 
 
 def test_every_other_code_family_is_described():
@@ -100,7 +123,7 @@ def test_apply_code_metadata_fills_only_missing_values(tmp_path):
         {
             "code": [
                 "VITAL//HEART_RATE",
-                "HOSPITAL_ADMISSION",
+                "DIAGNOSIS_ICD10//8140/3",
                 "DIAGNOSIS_ICD10//I10",
                 "MEDICATION//ATC5//X",
             ],
@@ -114,12 +137,12 @@ def test_apply_code_metadata_fills_only_missing_values(tmp_path):
     fp = tmp_path / "codes.parquet"
     codes.write_parquet(fp)
 
-    assert apply_code_metadata(fp, dictionary) == {"descriptions": 2}
+    assert apply_code_metadata(fp, dictionary) == {"descriptions": 1}
     out = pl.read_parquet(fp)
     assert out.columns == codes.columns and out["code"].to_list() == codes["code"].to_list()
     rows = {r["code"]: r for r in out.iter_rows(named=True)}
-    assert rows["VITAL//HEART_RATE"]["description"].startswith("Heart rate")
-    assert rows["HOSPITAL_ADMISSION"]["description"] == "already extracted"
+    assert rows["VITAL//HEART_RATE"]["description"] is None  # a literal code: described by the spec
+    assert rows["DIAGNOSIS_ICD10//8140/3"]["description"] == "already extracted"
     assert rows["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
     # Parent codes are suMEDS's job: existing ones are kept, none are added.
     assert rows["DIAGNOSIS_ICD10//I10"]["parent_codes"] is None

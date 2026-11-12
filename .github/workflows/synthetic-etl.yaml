@@ -41,16 +41,33 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --locked
+        # MESSY-synth 0.1.0 targets MEDS-Extract 0.8, so it shares the project environment and the
+        # locked MEDS-Extract.
+        run: |
+          uv sync --locked
+          uv pip install "MESSY_synth==0.1.0"
 
       - name: Generate and extract synthetic data
+        # The config joins separate date and clock columns into timestamps with f-strings, e.g.
+        # f"{$lab_date[0:10]} {$time_lab}". MESSY-synth cannot infer the format of each part, and
+        # without one these events would parse no times and yield no rows, so each column is
+        # registered with its format; the dry run reports per registration whether it matches.
         run: |
-          # 0.0.1 cannot render chrono `%.f` or f-string date+time timestamps, which this spec
-          # uses; pin the first commit that can until a newer MESSY_synth release is out.
-          uv pip install "MESSY_synth @ git+https://github.com/rvandewater/MESSY_synth@a3ac4d9908826f69667501e36c2d5b61355141d5"
-          uv run MESSY-synth ./src/CDSL_MEDS/event_configs.yaml -o raw_synthetic/ --explain
-          uv run meds-extract-run spec=CDSL output_dir=./CDSL_meds_synth \
+          uv run --locked MESSY-synth ./src/CDSL_MEDS/event_configs.yaml -o raw_synthetic/ --explain \
+            --column-format "patient_01/admission_date_emerg=%Y-%m-%d" \
+            --column-format "patient_01/time_admission_emerg=%H:%M:%S" \
+            --column-format "patient_01/time_constant_first_emerg=%H:%M" \
+            --column-format "patient_01/time_constant_last_emerg=%H:%M:%S" \
+            --column-format "lab_06/lab_date=%Y-%m-%d" \
+            --column-format "lab_06/time_lab=%H:%M:%S" \
+            --column-format "vital_signs_04/constants_ing_date=%Y-%m-%d" \
+            --column-format "vital_signs_04/constants_ing_time=%H:%M:%S" \
+            --column-format "CDSL-1.0.0-dicom-metadata/StudyDate=%Y-%m-%d" \
+            --column-format "CDSL-1.0.0-dicom-metadata/StudyTime=%H:%M:%S"
+          uv run --locked meds-extract-run spec=CDSL output_dir=./CDSL_meds_synth \
             input_dir=raw_synthetic do_download=false
           for f in dataset.json codes.parquet subject_splits.parquet; do
             test -f "CDSL_meds_synth/metadata/$f"
           done
+          # The sumeds_enrich post-stage soft-fails, so report the record rather than require it.
+          jq '.sumeds_enrichment | {enriched, coverage, error}' CDSL_meds_synth/metadata/dataset.json

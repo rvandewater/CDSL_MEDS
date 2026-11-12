@@ -1,26 +1,29 @@
-"""Code metadata that MEDS-Extract cannot attach through ``_metadata`` blocks.
+"""The ``cdsl_describe_slot_codes`` stage: descriptions of the slot-coded diagnosis and neoplasm codes.
 
-Most CDSL code families are described in ``event_configs.yaml``: the ``atc7`` dictionary join
-for medications, and ``_self`` templates for the codes built from one event's columns. Two kinds
-of codes cannot be described there, so ``MEDS_extract-CDSL`` fills them into the finished
-``metadata/codes.parquet`` with :func:`apply_code_metadata`:
+Most CDSL codes are described in ``event_configs.yaml``: the ``atc7`` dictionary join for
+medications, ``_self`` templates for the codes built from one event's columns, and constant ``_self``
+blocks for the literal codes (``HOSPITAL_ADMISSION``, ``VITAL//HEART_RATE``, ...).
 
-* **Literal codes** (``HOSPITAL_ADMISSION``, ``VITAL//HEART_RATE``, ...) have no code components
-  for ``_metadata`` to join on. MEDS-Extract documents a pre-existing ``codes.parquet`` for this
-  case, but the standard extraction pipeline never reads it. Their descriptions are in
-  ``metadata/static_code_descriptions.csv``, with the source of each row.
-* **Slot-coded codes** (``DIAGNOSIS_ICD10//``, ``NEOPLASM_ICDO3//``) come from one event per
-  column of a wide table (``dia_ppal``, ``dia_02``, ...). A code seen in two columns then has two
-  code templates, which the MEDS-Extract metadata reducer rejects, so those events cannot carry
-  ``_metadata`` either. Diagnosis descriptions come from the release's own ICD-10-CM dictionary,
-  ``icd10_codes_dict.txt``; ICD-O-3 morphology codes get a template naming the code.
+The **slot-coded codes** (``DIAGNOSIS_ICD10//``, ``NEOPLASM_ICDO3//``) cannot be described there. They
+come from one event per column of a wide table (``dia_ppal``, ``dia_02``, ...), so a code seen in two
+columns has two code templates, which the MEDS-Extract metadata stage rejects; those events cannot
+carry ``_metadata``. This module describes them in the finished ``metadata/codes.parquet``, as a
+MEDS-Extract post-stage that the spec runs before ``sumeds_enrich``::
+
+    etl:
+      post_stages:
+        - cdsl_describe_slot_codes
+        - sumeds_enrich: {rules: CDSL}
+
+Diagnosis descriptions come from the release's own ICD-10-CM dictionary, ``icd10_codes_dict.txt``
+(read from the run's ``input_dir``); ICD-O-3 morphology codes get a template naming the code.
 
 Vocabulary parent codes (ICD-10-CM, ICD-10-PCS, ICD-O-3, ATC), and the official titles of the
-ICD-10-CM and ICD-10-PCS codes the release does not describe, are not added here: suMEDS adds
-them with the rules in ``sumeds_rules.yaml``.
+ICD-10-CM and ICD-10-PCS codes the release does not describe, are not added here: suMEDS adds them
+with the rules in ``sumeds_rules.yaml``, in the ``sumeds_enrich`` stage that runs after this one.
 
-Only missing values are filled: an extracted description always wins, no code is added, and
-running the fill twice changes nothing.
+Only missing values are filled: an extracted description always wins, no code is added, and running
+the stage twice changes nothing.
 """
 
 import logging
@@ -32,12 +35,12 @@ from pathlib import Path
 import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
-from meds import CodeMetadataSchema
+from meds import CodeMetadataSchema, code_metadata_filepath
+from MEDS_transforms.stages import Stage
 
 logger = logging.getLogger(__name__)
 
-METADATA_DIR = Path(__file__).parent / "metadata"
-STATIC_DESCRIPTIONS_CSV = METADATA_DIR / "static_code_descriptions.csv"
+STAGE_NAME = "cdsl_describe_slot_codes"
 
 # The release's ICD-10 dictionary ("Additional tables" on the PhysioNet page). It is the CMS
 # ICD-10-CM FY2021 order file with its fixed-width fields joined by "|", without a header
@@ -59,14 +62,6 @@ ICDO3_MORPHOLOGY_CODE = re.compile(r"^[0-9]{4}/[0-9]{1,2}$")
 
 DIAGNOSIS_SOURCE = "CDSL diagnosis_er_02 / diagnosis_hosp_03 dia_* columns"
 NEOPLASM_SOURCE = "CDSL diagnosis_hosp_03 neo_* columns"
-
-
-def read_static_code_descriptions(path: Path = STATIC_DESCRIPTIONS_CSV) -> pl.DataFrame:
-    """Read the packaged descriptions of literal codes as ``code``, ``description``.
-
-    The ``source`` column documents the table itself and is not written into the dataset.
-    """
-    return pl.read_csv(path, infer_schema=False).select("code", "description")
 
 
 def read_icd10_dictionary(path: Path) -> dict[str, str]:
@@ -123,15 +118,15 @@ def slot_code_description(code: str, icd10_titles: Mapping[str, str]) -> str | N
 
 
 def apply_code_metadata(
-    codes_fp: Path, icd10_dictionary: Path | None = None, static: pl.DataFrame | None = None
+    codes_fp: Path, icd10_dictionary: Path | None = None, out_fp: Path | None = None
 ) -> dict[str, int]:
-    """Fill missing descriptions in a finished ``codes.parquet``, in place.
+    """Fill the missing descriptions of slot-coded codes in a finished ``codes.parquet``.
 
     Args:
         codes_fp: The ``metadata/codes.parquet`` of a finished extraction.
         icd10_dictionary: The release's ``icd10_codes_dict.txt``. Without it, ICD-10-CM codes stay
             undescribed (suMEDS can fill their titles).
-        static: Override of the packaged literal-code table (``code``, ``description``), for tests.
+        out_fp: Where to write the result; by default ``codes_fp`` itself.
 
     Returns:
         The number of codes whose description was filled.
@@ -141,28 +136,22 @@ def apply_code_metadata(
     cast back to the types the pipeline itself writes (``string``, ``list<string>``).
     """
     codes_fp = Path(codes_fp)
-    static = read_static_code_descriptions() if static is None else static
+    out_fp = codes_fp if out_fp is None else Path(out_fp)
     titles = {}
     if icd10_dictionary is not None and Path(icd10_dictionary).is_file():
         titles = read_icd10_dictionary(icd10_dictionary)
     else:
-        logger.warning(f"{ICD10_DICTIONARY} not found; ICD-10-CM codes are left undescribed.")
+        logger.warning(f"{icd10_dictionary or ICD10_DICTIONARY} not found; ICD-10-CM codes stay undescribed.")
 
     codes = pl.from_arrow(pq.read_table(codes_fp))
     if "description" not in codes.columns:
         codes = codes.with_columns(pl.lit(None, dtype=pl.String).alias("description"))
 
-    filled = (
-        codes.with_columns(
-            pl.Series(
-                "_slot_description",
-                [slot_code_description(code, titles) for code in codes["code"]],
-                dtype=pl.String,
-            ),
-        )
-        .join(static.rename({"description": "_static"}), on="code", how="left", maintain_order="left")
-        .with_columns(pl.coalesce("description", "_static", "_slot_description").alias("description"))
-        .select(codes.columns)
+    filled = codes.with_columns(
+        pl.coalesce(
+            "description",
+            pl.Series([slot_code_description(code, titles) for code in codes["code"]], dtype=pl.String),
+        ).alias("description")
     )
     counts = {
         "descriptions": int(
@@ -175,7 +164,28 @@ def apply_code_metadata(
     out = out.cast(pa.schema([pa.field(f.name, meds_types.get(f.name, f.type)) for f in out.schema]))
     CodeMetadataSchema.validate(out)
 
-    tmp_fp = codes_fp.with_suffix(".parquet.tmp")
+    tmp_fp = out_fp.with_name(f".{out_fp.name}.tmp")
     pq.write_table(out, tmp_fp)
-    os.replace(tmp_fp, codes_fp)
+    os.replace(tmp_fp, out_fp)
     return counts
+
+
+@Stage.register(
+    stage_name=STAGE_NAME, is_metadata=True, default_config={"icd10_dictionary": ICD10_DICTIONARY}
+)
+def main(cfg) -> None:
+    """Describe the slot-coded codes of the finished cohort's ``metadata/codes.parquet``, in place.
+
+    ``icd10_dictionary`` is the release's ICD-10-CM dictionary, relative to the run's ``input_dir``
+    (or absolute). If it is missing, a warning is logged and ICD-10-CM codes stay undescribed.
+    """
+    if cfg.worker != 0:
+        return
+    codes = Path(code_metadata_filepath).name
+    dictionary = Path(cfg.input_dir) / cfg.stage_cfg.icd10_dictionary
+    counts = apply_code_metadata(
+        Path(cfg.stage_cfg.metadata_input_dir) / codes,
+        dictionary,
+        out_fp=Path(cfg.stage_cfg.reducer_output_dir) / codes,
+    )
+    logger.info(f"Described {counts['descriptions']} slot-coded codes.")

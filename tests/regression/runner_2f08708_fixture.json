@@ -1,0 +1,102 @@
+{
+  "about": "What the MEDS_extract-CDSL runner (CDSL_MEDS 2f08708, MEDS-Extract 0.8.0) built from the synthetic release of tests/conftest.py with --no-enrich: each code's description and number of events. tests/test_runner_equivalence.py checks that meds-extract-run spec=CDSL still builds it.",
+  "events": 950,
+  "codes": {
+    "AGE_AT_ADMISSION": {
+      "description": "Patient age, placed at hospital admission; numeric_value is the age (CDSL patient_01.age)",
+      "events": 10
+    },
+    "DIAGNOSIS_ICD10//I10": {
+      "description": "Essential (primary) hypertension",
+      "events": 310
+    },
+    "EMERGENCY_DEPARTMENT//1": {
+      "description": "Emergency department visit; department where the patient was treated: 1 (CDSL patient_01.department_emerg)",
+      "events": 10
+    },
+    "EMERGENCY_DEPARTMENT_VISIT": {
+      "description": "Emergency department visit that led to the hospital admission (CDSL patient_01.admission_date_emerg, time_admission_emerg)",
+      "events": 10
+    },
+    "EMERGENCY_DIAGNOSIS//1": {
+      "description": "Diagnosis given in the emergency department: 1 (CDSL patient_01.diag_emerg)",
+      "events": 10
+    },
+    "HOSPITAL_ADMISSION": {
+      "description": "Hospital admission (CDSL patient_01.admission_d_inpat)",
+      "events": 10
+    },
+    "HOSPITAL_DISCHARGE//X": {
+      "description": "Hospital discharge; discharge destination: X (CDSL patient_01.destin_discharge)",
+      "events": 10
+    },
+    "ICU_ADMISSION": {
+      "description": "ICU admission (CDSL patient_01.icu_date_in)",
+      "events": 10
+    },
+    "ICU_DISCHARGE": {
+      "description": "ICU discharge (CDSL patient_01.icu_date_out)",
+      "events": 10
+    },
+    "INPATIENT_DIAGNOSIS//X": {
+      "description": "COVID-related diagnosis of the hospital admission: X (CDSL patient_01.diag_inpat)",
+      "events": 10
+    },
+    "LAB//X//X": {
+      "description": "Laboratory test: X; unit: X (CDSL lab_06.item_lab, lab_06.ud_result)",
+      "events": 10
+    },
+    "MECHANICAL_VENTILATION": {
+      "description": "Mechanical ventilation during the hospital stay (CDSL patient_01.mechvent is Yes); placed at hospital admission, not at the start of ventilation",
+      "events": 10
+    },
+    "MEDICATION//ATC5//H03AA//ATC7//H03AA01": {
+      "description": "LEVOTIROXINA SÓDICA",
+      "events": 10
+    },
+    "MEDICATION_END//ATC5//H03AA//ATC7//H03AA01": {
+      "description": "End of medication: LEVOTIROXINA SÓDICA (CDSL atc7.atc7_name)",
+      "events": 10
+    },
+    "NEOPLASM_ICDO3//8140/3": {
+      "description": "Neoplasm, ICD-O-3 morphology code 8140/3 (CDSL diagnosis_hosp_03 neo_* columns)",
+      "events": 60
+    },
+    "PROCEDURE_ICD10PCS//5A1955Z": {
+      "description": null,
+      "events": 250
+    },
+    "SEX//X": {
+      "description": "Sex: X (CDSL patient_01.sex)",
+      "events": 10
+    },
+    "VITAL//BLOOD_GLUCOSE": {
+      "description": "Blood glucose level; unit not documented (CDSL vital_signs_04.glu_ing, patient_01.glu_first_emerg, glu_last_emerg)",
+      "events": 30
+    },
+    "VITAL//DIASTOLIC_BLOOD_PRESSURE": {
+      "description": "Diastolic (minimum) blood pressure; unit not documented (CDSL vital_signs_04.bp_min_ing, patient_01.bp_min_first_emerg, bp_min_last_emerg)",
+      "events": 30
+    },
+    "VITAL//HEART_RATE": {
+      "description": "Heart rate; unit not documented (CDSL vital_signs_04.hr_ing, patient_01.hr_first_emerg, hr_last_emerg)",
+      "events": 30
+    },
+    "VITAL//OXYGEN_SATURATION": {
+      "description": "Oxygen saturation; unit not documented (CDSL vital_signs_04.sat_02_ing, patient_01.sat_02_first_emerg, sat_02_last_emerg)",
+      "events": 30
+    },
+    "VITAL//SYSTOLIC_BLOOD_PRESSURE": {
+      "description": "Systolic (maximum) blood pressure; unit not documented (CDSL vital_signs_04.bp_max_ing, patient_01.bp_max_first_emerg, bp_max_last_emerg)",
+      "events": 30
+    },
+    "VITAL//TEMPERATURE": {
+      "description": "Body temperature; unit not documented (CDSL vital_signs_04.temp_ing, patient_01.temp_first_emerg, temp_last_emerg)",
+      "events": 30
+    },
+    "VITAL//URINE_OUTPUT": {
+      "description": "Urine output (diuresis) at the first emergency department assessment; unit not documented (CDSL patient_01.diuresis_first_emerg)",
+      "events": 10
+    }
+  }
+}
