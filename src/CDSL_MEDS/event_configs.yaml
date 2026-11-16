@@ -549,6 +549,10 @@ lab_06:
         description: >-
           f"Laboratory test: {$item_lab}; unit: {$ud_result ?? 'UNKNOWN'} (CDSL lab_06.item_lab,
           lab_06.ud_result)"
+        # The row's own unit (lab_06.ud_result), which is also the code's last part; none for an
+        # `UNKNOWN` code. The vital signs, age, urine output and medication dose have no unit in the
+        # release or its PhysioNet documentation, so they carry none.
+        unit: $ud_result
 
 vital_signs_04:
   systolic_blood_pressure:

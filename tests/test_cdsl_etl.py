@@ -41,6 +41,15 @@ def test_etl_runs_on_a_minimal_valid_fixture(plain_output):
     )
 
 
+def test_lab_codes_carry_their_unit(plain_output):
+    """A lab code's unit (`lab_06.ud_result`, the fixture's "X") is also code metadata; the vital signs,
+    whose unit the release does not document, carry none."""
+    metadata = {r["code"]: r for r in pq.read_table(plain_output / "metadata/codes.parquet").to_pylist()}
+    assert metadata["LAB//X//X"]["unit"] == ["X"]
+    assert not metadata["VITAL//HEART_RATE"]["unit"]
+    assert not metadata["AGE_AT_ADMISSION"]["unit"]
+
+
 def test_latin1_sources_are_decoded(plain_output, raw_dir):
     """The fixture's Latin-1 tables are not UTF-8, yet their text arrives intact (`etl.encoding`)."""
     events = pl.concat([pl.read_parquet(fp) for fp in (plain_output / "data").rglob("*.parquet")])

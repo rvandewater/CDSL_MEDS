@@ -159,6 +159,10 @@ Sources:
     [covidhm-code](https://github.com/theonesp/covidhm-code) (MIT,
     `CovidHM_V3-code/buildcovidhm/data_wrangling/V3_icd10_data_wrangling.py`).
 
+**Units.** Lab codes also carry their unit as **`unit`**, from the row's `lab_06.ud_result`, which is
+already the code's last part; an `UNKNOWN` code has none. The release and its PhysioNet documentation give
+no unit for the vital signs, age, urine output or medication dose, so those codes carry none.
+
 **Which ICD-10.** The CDSL documentation says only "ICD-10". The dictionary shipped with the release is
 the US ICD-10-CM (FY2021), and Spain's CIE-10-ES is the Spanish edition of the ICD-10 Clinical
 Modification
