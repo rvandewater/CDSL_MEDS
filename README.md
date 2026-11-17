@@ -45,10 +45,11 @@ This one command gives the complete build. It will:
     [Input encoding](#input-encoding)) and the dataset descriptors of `metadata/dataset.json` are
     declared in [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml). The downloaded
     files are not modified.
-3. Run the two post-stages the config declares: `cdsl_describe_slot_codes` describes the slot-coded
+3. Run the three post-stages the config declares: `cdsl_describe_slot_codes` describes the slot-coded
     diagnosis and neoplasm codes from the release's own dictionary (see [Code metadata](#code-metadata)),
     then `sumeds_enrich` adds official vocabulary titles and parent codes with suMEDS (see
-    [Enriching code metadata with suMEDS](#enriching-code-metadata-with-sumeds)).
+    [Enriching code metadata with suMEDS](#enriching-code-metadata-with-sumeds)), and
+    `cdsl_collapse_unit_metadata` makes each code's `unit` one String.
 
 If you already have the PhysioNet release on disk, skip the download and point `input_dir` at the
 directory that directly contains `patient_01.csv`:
@@ -84,9 +85,10 @@ The whole ETL is one MESSY (MEDS-Extract Specification Syntax YAML) file,
 the name `CDSL`. That registration is what makes `spec=CDSL` work. A second entry point registers
 [`src/CDSL_MEDS/sumeds_rules.yaml`](src/CDSL_MEDS/sumeds_rules.yaml) with suMEDS's `sumeds.rules` group
 under the same name, which is how the config's `sumeds_enrich: {rules: CDSL}` and `--rules CDSL` find
-the enrichment rules. A third registers the `cdsl_describe_slot_codes` post-stage
-([`src/CDSL_MEDS/code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) with MEDS-Transforms's
-`MEDS_transforms.stages` group.
+the enrichment rules. Two more register the `cdsl_describe_slot_codes` post-stage
+([`src/CDSL_MEDS/code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) and the
+`cdsl_collapse_unit_metadata` post-stage ([`src/CDSL_MEDS/unit_metadata.py`](src/CDSL_MEDS/unit_metadata.py))
+with MEDS-Transforms's `MEDS_transforms.stages` group.
 
 ### Input encoding
 
@@ -161,7 +163,18 @@ Sources:
 
 **Units.** Lab codes also carry their unit as **`unit`**, from the row's `lab_06.ud_result`, which is
 already the code's last part; an `UNKNOWN` code has none. The release and its PhysioNet documentation give
-no unit for the vital signs, age, urine output or medication dose, so those codes carry none.
+no unit for the vital signs, age, urine output or medication dose, so those codes carry none. `unit` is a
+String: the unit of the code's numeric values as recorded, one per code (MEDS does not standardise this
+column). MEDS-Extract writes it as a list of the values seen; the last post-stage,
+`cdsl_collapse_unit_metadata` (`CDSL_MEDS.unit_metadata`), turns that list into one String and fails if
+a code has more than one unit. No CDSL code does, because the lab unit is part of the code.
+
+**Unit siblings.** The same post-stage links lab codes that differ only in their unit
+(`LAB//{item}//{unit}` codes of one item with two or more units): each gets the code without its unit,
+`LAB//{item}`, in its `parent_codes`, after any vocabulary parents. This parent is an in-dataset code,
+not a vocabulary code. It gets a row of its own in `codes.parquet` (no events carry it): the siblings'
+description if they all share one, the vocabulary parents they all share, and no unit. A lab code whose
+item has a single unit, and an `UNKNOWN`-unit code, gets no such parent.
 
 **Which ICD-10.** The CDSL documentation says only "ICD-10". The dictionary shipped with the release is
 the US ICD-10-CM (FY2021), and Spain's CIE-10-ES is the Spanish edition of the ICD-10 Clinical
@@ -176,7 +189,7 @@ Vocabulary work is maintained once, in [suMEDS](https://github.com/rvandewater/S
 this package), rather than in every ETL. This package ships the rules for it,
 [`src/CDSL_MEDS/sumeds_rules.yaml`](src/CDSL_MEDS/sumeds_rules.yaml), registered in suMEDS's
 `sumeds.rules` entry-point group under the same name as the MEDS-Extract spec, `CDSL`. The config's
-last post-stage, suMEDS's `sumeds_enrich`, enriches `metadata/codes.parquet` with them after the
+post-stage `sumeds_enrich` enriches `metadata/codes.parquet` with them after the
 release's own descriptions are filled, and replaces the file only once the enriched table is complete.
 By default the ICD-10-CM and ICD-10-PCS data come from suMEDS's ontology packs, fetched from GitHub on
 first use and cached; no Athena download is needed.
@@ -324,7 +337,7 @@ Both print how the statistics changed against the committed baseline before over
 [`tests/regression/policy.yaml`](tests/regression/policy.yaml) flags an error. Rebuilding the same
 commit reproduces the baseline exactly, so any finding is a change in the output. CI cannot rebuild the
 credentialed release, so the [Summary stats workflow](.github/workflows/summary-stats.yaml) only warns
-when a pull request changes `src/` (the config, the post-stage or the suMEDS rules) without regenerating the
+when a pull request changes `src/` (the config, the post-stages or the suMEDS rules) without regenerating the
 baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so check it with
 `--compare`.
 

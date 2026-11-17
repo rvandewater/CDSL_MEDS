@@ -161,6 +161,7 @@ def test_enrichment_keeps_the_dataset_metadata(enriched_output: Path, plain_outp
             assert enriched[code]["description"] == row["description"], code
         parents = row.get("parent_codes") or []
         assert (enriched[code]["parent_codes"] or [])[: len(parents)] == parents, code
+        assert enriched[code]["unit"] == row["unit"], code
 
 
 def test_vocabulary_codes_get_titles_and_parents(enriched_output: Path):
@@ -209,6 +210,7 @@ def test_skipping_the_stage_leaves_no_record(plain_output: Path):
     logs = plain_output / ".logs"
     assert (logs / "cdsl_describe_slot_codes.done").exists()
     assert not (logs / "sumeds_enrich.done").exists()
+    assert (logs / "cdsl_collapse_unit_metadata.done").exists()
     assert not [code for code, row in read_codes(plain_output).items() if row.get("parent_codes")]
 
 

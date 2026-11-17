@@ -40,6 +40,9 @@ etl:
     # soft-fails (e.g. without internet); `suMEDS-enrich OUTPUT_DIR` finishes it later.
     - sumeds_enrich:
         rules: CDSL
+    # Turns the `unit` list MEDS-Extract writes into one String per code, and fails if a code has more
+    # than one unit (CDSL_MEDS.unit_metadata).
+    - cdsl_collapse_unit_metadata
 
 _defaults:
   subject_id: $patient_id

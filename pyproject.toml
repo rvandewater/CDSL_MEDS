@@ -47,9 +47,11 @@ CDSL = "CDSL_MEDS:event_configs.yaml"
 [project.entry-points."sumeds.rules"]
 CDSL = "CDSL_MEDS:sumeds_rules.yaml"
 
-# The post-stage that describes the slot-coded diagnosis and neoplasm codes (`etl.post_stages`).
+# The post-stages (`etl.post_stages`): descriptions of the slot-coded diagnosis and neoplasm codes.
 [project.entry-points."MEDS_transforms.stages"]
 cdsl_describe_slot_codes = "CDSL_MEDS.code_descriptions:main"
+# One String `unit` per code in metadata/codes.parquet, run last (`etl.post_stages`).
+cdsl_collapse_unit_metadata = "CDSL_MEDS.unit_metadata:main"
 
 [project.urls]
 Homepage = "https://physionet.org/content/covid-data-shared-learning/1.0.0/"
