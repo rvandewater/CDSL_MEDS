@@ -23,10 +23,18 @@ suffix. When two or more unit-suffixed codes share a stem (``LAB//<item>//mg/dL`
 any vocabulary parents and only once, and the stem gets a ``codes.parquet`` row of its own (unless one
 exists): the siblings' description if they all share one, the vocabulary parents they all share, no
 unit, and nulls elsewhere. A unit-suffixed code without a sibling gets no parent.
+
+**Units stated in descriptions.** A description may state its code's unit (``DESCRIPTION_UNIT_PATTERN``,
+group ``unit``). Such a unit fills ``unit`` only where the data gave none, and only if it looks like a
+unit (:func:`is_unit_like`); a unit from the data always wins. CDSL's lab descriptions are written by
+this ETL from the row's own ``lab_06.ud_result``, so they never add a unit the data lacks; the pattern
+matters for stem rows: when sibling descriptions differ only in the matched span, the stem row gets
+the description with that span removed.
 """
 
 import logging
 import os
+import re
 from pathlib import Path
 
 import polars as pl
@@ -40,6 +48,15 @@ logger = logging.getLogger(__name__)
 STAGE_NAME = "cdsl_collapse_unit_metadata"
 UNIT_COLUMN = "unit"
 MAX_EXAMPLES = 5
+
+# The unit span of the lab descriptions this config writes:
+# f"Laboratory test: {item}; unit: {ud_result} (CDSL lab_06.item_lab, lab_06.ud_result)".
+DESCRIPTION_UNIT_PATTERN = re.compile(
+    r"; unit: (?P<unit>.+?)(?= \(CDSL lab_06\.item_lab, lab_06\.ud_result\)$)"
+)
+# Placeholders for a missing unit, which are not units.
+NOT_UNITS = frozenset({"unknown", "unk", "na", "n/a", "none", "null", "-", "?"})
+UNIT_SHAPE = re.compile(r"^(?=.*[A-Za-z%°µμ])[A-Za-z0-9%°µμ/.*^·+\-\[\]{}'() ]{1,32}$")
 
 
 class MultipleUnitsError(ValueError):
@@ -89,6 +106,79 @@ def collapse_units(codes: pl.DataFrame, column: str = UNIT_COLUMN) -> pl.DataFra
         examples = codes.filter(several)["code"].head(MAX_EXAMPLES).to_list()
         raise MultipleUnitsError(int(several.sum()), examples)
     return codes.with_columns(units.list.first().alias(column))
+
+
+def is_unit_like(text: str) -> bool:
+    """Whether ``text`` has the shape of a unit (UCUM-like characters, not a missing-unit placeholder).
+
+    Examples:
+        >>> [is_unit_like(t) for t in ["mg/dL", "10^9/L", "%", "mmHg", "UNKNOWN", "12", "see comment: x"]]
+        [True, True, True, True, False, False, False]
+    """
+    text = text.strip()
+    return text.lower() not in NOT_UNITS and bool(UNIT_SHAPE.match(text))
+
+
+def units_from_descriptions(
+    codes: pl.DataFrame, pattern: re.Pattern | None, column: str = UNIT_COLUMN
+) -> tuple[pl.DataFrame, dict[str, int]]:
+    r"""Fill a null ``column`` from the unit its description states; return the frame and counts.
+
+    Counts: ``description_units`` (descriptions stating a unit-like unit), ``description_units_rejected``
+    (matches that are not unit-like), ``description_units_filled`` (codes that gained their unit) and
+    ``description_unit_conflicts`` (codes whose unit from the data differs; the data wins).
+
+    Examples:
+        >>> pattern = re.compile(r" \[(?P<unit>[^\]]+)\]$")
+        >>> codes = pl.DataFrame({
+        ...     "code": ["HR", "W", "X", "Y"],
+        ...     "description": ["Heart rate [b/min]", "Weight [kg]", "Score [none]", "Temp [degC]"],
+        ...     "unit": [None, "g", None, None],
+        ... })
+        >>> out, counts = units_from_descriptions(codes, pattern)
+        >>> out["unit"].to_list(), counts["description_units_filled"], counts["description_unit_conflicts"]
+        (['b/min', 'g', None, 'degC'], 2, 1)
+    """
+    counts = dict.fromkeys(
+        (
+            "description_units",
+            "description_units_rejected",
+            "description_units_filled",
+            "description_unit_conflicts",
+        ),
+        0,
+    )
+    if pattern is None or "description" not in codes.columns:
+        return codes, counts
+    units = []
+    for description, unit in zip(codes["description"], codes[column], strict=True):
+        match = pattern.search(description) if description else None
+        stated = match["unit"].strip() if match else None
+        if stated is not None and not is_unit_like(stated):
+            counts["description_units_rejected"] += 1
+            stated = None
+        if stated is not None:
+            counts["description_units"] += 1
+            if unit is None:
+                counts["description_units_filled"] += 1
+            elif unit != stated:
+                counts["description_unit_conflicts"] += 1
+        units.append(unit if unit is not None else stated)
+    return codes.with_columns(pl.Series(column, units, dtype=pl.String)), counts
+
+
+def without_unit_span(description: str | None, pattern: re.Pattern | None) -> str | None:
+    """``description`` with the span ``pattern`` matches removed and trimmed, or ``None`` if no match.
+
+    Examples:
+        >>> without_unit_span("Laboratory test: Na; unit: mmol/L (CDSL lab_06.item_lab, lab_06.ud_result)",
+        ...                   DESCRIPTION_UNIT_PATTERN)
+        'Laboratory test: Na (CDSL lab_06.item_lab, lab_06.ud_result)'
+    """
+    match = pattern.search(description) if pattern is not None and description else None
+    if match is None:
+        return None
+    return (description[: match.start()] + description[match.end() :]).strip()
 
 
 def unit_stem(code: str, unit: str | None) -> str | None:
@@ -147,10 +237,13 @@ def add_unit_sibling_parents(codes: pl.DataFrame, column: str = UNIT_COLUMN) -> 
     return out, len(siblings), added
 
 
-def unit_stem_rows(codes: pl.DataFrame, column: str = UNIT_COLUMN) -> list[dict]:
+def unit_stem_rows(
+    codes: pl.DataFrame, column: str = UNIT_COLUMN, pattern: re.Pattern | None = None
+) -> list[dict]:
     """Return a new ``codes.parquet`` row for each sibling-group stem that has no row yet.
 
-    The row's ``description`` is the siblings' description if they all share one non-null value, its
+    The row's ``description`` is the siblings' description if they all share one non-null value (else,
+    if they differ only in the span ``pattern`` matches, the description without that span), its
     ``parent_codes`` the parents all siblings share (never the stem itself; ``None`` if none), and its
     unit is null, as are the columns the row does not name.
 
@@ -178,6 +271,8 @@ def unit_stem_rows(codes: pl.DataFrame, column: str = UNIT_COLUMN) -> list[dict]
         if len(members) < 2 or stem in existing:
             continue
         shared_descriptions = {descriptions[i] for i in members}
+        if len(shared_descriptions) > 1:
+            shared_descriptions = {without_unit_span(descriptions[i], pattern) for i in members}
         description = shared_descriptions.pop() if len(shared_descriptions) == 1 else None
         shared = [p for p in (parents[members[0]] or []) if p != stem]
         for i in members[1:]:
@@ -186,17 +281,20 @@ def unit_stem_rows(codes: pl.DataFrame, column: str = UNIT_COLUMN) -> list[dict]
     return rows
 
 
-def collapse_unit_metadata(codes_fp: Path, out_fp: Path | None = None) -> dict[str, int]:
+def collapse_unit_metadata(
+    codes_fp: Path, out_fp: Path | None = None, pattern: re.Pattern | None = DESCRIPTION_UNIT_PATTERN
+) -> dict[str, int]:
     """Collapse ``unit`` to one String per code and link unit siblings, in a finished ``codes.parquet``.
 
     Args:
         codes_fp: The ``metadata/codes.parquet`` of a finished extraction.
         out_fp: Where to write the result; by default ``codes_fp`` itself.
+        pattern: The unit span of a description (group ``unit``); see :func:`units_from_descriptions`.
 
     Returns:
         Counts: ``units`` (codes with a unit), ``sibling_groups`` (stems shared by two or more
-        unit-suffixed codes), ``sibling_parents`` (codes whose ``parent_codes`` gained their stem) and
-        ``stem_rows`` (rows added for stems).
+        unit-suffixed codes), ``sibling_parents`` (codes whose ``parent_codes`` gained their stem),
+        ``stem_rows`` (rows added for stems), and those of :func:`units_from_descriptions`.
 
     Raises:
         MultipleUnitsError: if a code has more than one unit; nothing is written then.
@@ -213,12 +311,13 @@ def collapse_unit_metadata(codes_fp: Path, out_fp: Path | None = None) -> dict[s
         optional = [c for c in ("description", "parent_codes") if c in table.column_names]
         columns = ["code", UNIT_COLUMN, *optional]
         before = pl.from_arrow(table.select(columns))
-        codes, counts["sibling_groups"], counts["sibling_parents"] = add_unit_sibling_parents(
-            collapse_units(before)
-        )
+        codes, described = units_from_descriptions(collapse_units(before), pattern)
+        counts.update(described)
+        codes, counts["sibling_groups"], counts["sibling_parents"] = add_unit_sibling_parents(codes)
         counts["units"] = int(codes[UNIT_COLUMN].is_not_null().sum())
         unit_type = table.schema.field(UNIT_COLUMN).type
-        if not (pa.types.is_string(unit_type) or pa.types.is_large_string(unit_type)):
+        is_string = pa.types.is_string(unit_type) or pa.types.is_large_string(unit_type)
+        if not is_string or counts["description_units_filled"]:
             table = table.set_column(
                 table.column_names.index(UNIT_COLUMN), UNIT_COLUMN, codes[UNIT_COLUMN].to_arrow()
             )
@@ -228,7 +327,7 @@ def collapse_unit_metadata(codes_fp: Path, out_fp: Path | None = None) -> dict[s
                 table = table.set_column(table.column_names.index("parent_codes"), "parent_codes", parents)
             else:
                 table = table.append_column("parent_codes", parents)
-        if stem_rows := unit_stem_rows(codes):
+        if stem_rows := unit_stem_rows(codes, pattern=pattern):
             counts["stem_rows"] = len(stem_rows)
             was_sorted = pl.from_arrow(table.column("code")).is_sorted()
             table = pa.concat_tables([table, pa.Table.from_pylist(stem_rows, schema=table.schema)])
@@ -254,5 +353,6 @@ def main(cfg) -> None:
     logger.info(
         f"{counts['units']} codes have a unit (one String per code); {counts['sibling_parents']} unit "
         f"siblings in {counts['sibling_groups']} groups got their stem as a parent code; "
-        f"{counts['stem_rows']} stem rows added."
+        f"{counts['stem_rows']} stem rows added; {counts['description_units_filled']} units filled from "
+        f"descriptions ({counts['description_unit_conflicts']} disagree with the data, which wins)."
     )

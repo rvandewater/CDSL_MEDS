@@ -173,8 +173,14 @@ a code has more than one unit. No CDSL code does, because the lab unit is part o
 (`LAB//{item}//{unit}` codes of one item with two or more units): each gets the code without its unit,
 `LAB//{item}`, in its `parent_codes`, after any vocabulary parents. This parent is an in-dataset code,
 not a vocabulary code. It gets a row of its own in `codes.parquet` (no events carry it): the siblings'
-description if they all share one, the vocabulary parents they all share, and no unit. A lab code whose
-item has a single unit, and an `UNKNOWN`-unit code, gets no such parent.
+description if they all share one (or, when they differ only in the `; unit: …` part, that description
+without it), the vocabulary parents they all share, and no unit. A lab code whose item has a single
+unit, and an `UNKNOWN`-unit code, gets no such parent.
+
+**Units in descriptions.** The post-stage can also fill a missing `unit` from a unit the code's
+description states (never overriding a unit from the data). CDSL has no dataset dictionary that states
+units: the release's descriptions give none, and the lab descriptions are written by this ETL from the
+row's own `lab_06.ud_result`. So no code gains a unit this way, and no code is renamed.
 
 **Which ICD-10.** The CDSL documentation says only "ICD-10". The dictionary shipped with the release is
 the US ICD-10-CM (FY2021), and Spain's CIE-10-ES is the Spanish edition of the ICD-10 Clinical

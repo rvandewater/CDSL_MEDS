@@ -2,6 +2,7 @@
 siblings linked by their stem in ``parent_codes``."""
 
 import doctest
+import re
 
 import polars as pl
 import pyarrow as pa
@@ -10,7 +11,13 @@ import pytest
 from meds import CodeMetadataSchema
 
 from CDSL_MEDS import unit_metadata
-from CDSL_MEDS.unit_metadata import MultipleUnitsError, collapse_unit_metadata
+from CDSL_MEDS.unit_metadata import DESCRIPTION_UNIT_PATTERN, MultipleUnitsError, collapse_unit_metadata
+
+CORE_COUNTS = ("units", "sibling_groups", "sibling_parents", "stem_rows")
+
+
+def core_counts(counts: dict[str, int]) -> dict[str, int]:
+    return {k: counts[k] for k in CORE_COUNTS}
 
 
 def write_meds_parquet(df: pl.DataFrame, fp) -> None:
@@ -46,7 +53,7 @@ def test_lists_become_one_string_per_code(tmp_path):
             ["Geen"],  # kept as recorded, not normalised
         ],
     )
-    assert collapse_unit_metadata(fp) == {
+    assert core_counts(collapse_unit_metadata(fp)) == {
         "units": 4,
         "sibling_groups": 0,
         "sibling_parents": 0,
@@ -84,7 +91,7 @@ def test_a_string_unit_passes_through(tmp_path):
 def test_no_unit_column_is_left_alone(tmp_path):
     fp = tmp_path / "codes.parquet"
     write_meds_parquet(pl.DataFrame({"code": ["A"], "description": ["a"]}), fp)
-    assert collapse_unit_metadata(fp) == {
+    assert core_counts(collapse_unit_metadata(fp)) == {
         "units": 0,
         "sibling_groups": 0,
         "sibling_parents": 0,
@@ -124,7 +131,7 @@ def test_unit_siblings_get_their_stem_as_parent_and_a_stem_row(tmp_path):
     )
     write_meds_parquet(df, fp)
     expected = {"units": 6, "sibling_groups": 2, "sibling_parents": 4, "stem_rows": 2}
-    assert collapse_unit_metadata(fp) == expected
+    assert core_counts(collapse_unit_metadata(fp)) == expected
     table = pq.read_table(fp)
     CodeMetadataSchema.validate(table)
     assert table.schema.field("parent_codes").type == pa.list_(pa.string())
@@ -152,7 +159,7 @@ def test_unit_siblings_get_their_stem_as_parent_and_a_stem_row(tmp_path):
     assert rows["LAB//Hb"]["unit"] is None
     # Idempotent: a second run adds no parent and no row.
     before = pq.read_table(fp)
-    assert collapse_unit_metadata(fp) == {**expected, "sibling_parents": 0, "stem_rows": 0}
+    assert core_counts(collapse_unit_metadata(fp)) == {**expected, "sibling_parents": 0, "stem_rows": 0}
     assert pq.read_table(fp).equals(before)
 
 
@@ -201,6 +208,79 @@ def test_parent_codes_is_created_for_siblings(tmp_path):
     write_meds_parquet(df, fp)
     assert collapse_unit_metadata(fp)["sibling_parents"] == 2
     assert pq.read_table(fp).column("parent_codes").to_pylist() == [["X//a"], ["X//a"], None]
+
+
+def lab_description(item: str, unit: str) -> str:
+    """The lab description template of event_configs.yaml."""
+    return f"Laboratory test: {item}; unit: {unit} (CDSL lab_06.item_lab, lab_06.ud_result)"
+
+
+def test_units_stated_in_descriptions_fill_only_missing_units(tmp_path):
+    fp = tmp_path / "codes.parquet"
+    df = pl.DataFrame(
+        {
+            "code": ["A//mg", "B", "C", "D", "E"],
+            "description": [
+                "A [mg]",  # data unit agrees
+                "B [g]",  # no data unit: filled
+                "C [UNKNOWN]",  # a placeholder, not a unit: rejected
+                "D [kg]",  # data unit disagrees: the data wins
+                "E",  # states no unit
+            ],
+            "unit": [["mg"], None, None, ["lb"], None],
+        }
+    )
+    write_meds_parquet(df, fp)
+    counts = collapse_unit_metadata(fp, pattern=re.compile(r" \[(?P<unit>[^\]]+)\]$"))
+    assert pq.read_table(fp).column("unit").to_pylist() == ["mg", "g", None, "lb", None]
+    assert counts["description_units"] == 3
+    assert counts["description_units_rejected"] == 1
+    assert counts["description_units_filled"] == 1
+    assert counts["description_unit_conflicts"] == 1
+    # Idempotent.
+    assert (
+        collapse_unit_metadata(fp, pattern=re.compile(r" \[(?P<unit>[^\]]+)\]$"))["description_units_filled"]
+        == 0
+    )
+
+
+def test_cdsl_lab_descriptions_add_no_unit_the_data_lacks(tmp_path):
+    """The lab template states the row's own unit, so the `UNKNOWN` code stays without one."""
+    fp = tmp_path / "codes.parquet"
+    df = pl.DataFrame(
+        {
+            "code": ["LAB//Na//mmol/L", "LAB//Na//UNKNOWN"],
+            "description": [lab_description("Na", "mmol/L"), lab_description("Na", "UNKNOWN")],
+            "unit": [["mmol/L"], None],
+        }
+    )
+    write_meds_parquet(df, fp)
+    counts = collapse_unit_metadata(fp)
+    assert pq.read_table(fp).column("unit").to_pylist() == ["mmol/L", None]
+    assert (counts["description_units_filled"], counts["description_unit_conflicts"]) == (0, 0)
+    assert counts["description_units_rejected"] == 1
+
+
+def test_stem_description_drops_only_the_unit_span(tmp_path):
+    fp = tmp_path / "codes.parquet"
+    df = pl.DataFrame(
+        {
+            "code": ["LAB//Hb//g/dL", "LAB//Hb//mmol/L", "LAB//K//mmol/L", "LAB//K//mEq/L"],
+            "description": [
+                lab_description("Hb", "g/dL"),
+                lab_description("Hb", "mmol/L"),
+                lab_description("K", "mmol/L"),
+                "Potassium, other text",  # differs beyond the unit span: no shared description
+            ],
+            "unit": [["g/dL"], ["mmol/L"], ["mmol/L"], ["mEq/L"]],
+        }
+    )
+    write_meds_parquet(df, fp)
+    assert collapse_unit_metadata(fp)["stem_rows"] == 2
+    rows = {r["code"]: r for r in pq.read_table(fp).to_pylist()}
+    assert rows["LAB//Hb"]["description"] == "Laboratory test: Hb (CDSL lab_06.item_lab, lab_06.ud_result)"
+    assert rows["LAB//K"]["description"] is None
+    assert DESCRIPTION_UNIT_PATTERN.search(lab_description("Hb", "g/dL"))["unit"] == "g/dL"
 
 
 def test_docstring_examples():
