@@ -1,6 +1,7 @@
 import json
 
 import polars as pl
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import yaml
@@ -45,7 +46,7 @@ def test_lab_codes_carry_their_unit(plain_output):
     """A lab code's unit (`lab_06.ud_result`, the fixture's "X") is also code metadata, one String per code;
     the vital signs, whose unit the release does not document, carry none."""
     codes = pq.read_table(plain_output / "metadata/codes.parquet")
-    assert pl.from_arrow(codes)["unit"].dtype == pl.String
+    assert codes.schema.field("unit").type == pa.large_string()  # as suMEDS writes it back
     metadata = {r["code"]: r for r in codes.to_pylist()}
     assert metadata["LAB//X//X"]["unit"] == "X"
     assert not metadata["VITAL//HEART_RATE"]["unit"]
