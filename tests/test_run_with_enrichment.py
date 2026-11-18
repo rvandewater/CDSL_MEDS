@@ -210,7 +210,7 @@ def test_skipping_the_stage_leaves_no_record(plain_output: Path):
     logs = plain_output / ".logs"
     assert (logs / "cdsl_describe_slot_codes.done").exists()
     assert not (logs / "sumeds_enrich.done").exists()
-    assert (logs / "cdsl_collapse_unit_metadata.done").exists()
+    assert (logs / "cdsl_unit_metadata.done").exists()
     assert not [code for code, row in read_codes(plain_output).items() if row.get("parent_codes")]
 
 

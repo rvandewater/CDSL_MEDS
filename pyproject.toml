@@ -19,14 +19,15 @@ classifiers = [
 # raise this deliberately when migrating. 0.8 is the first release where `etl.encoding` can name a
 # codec per source, `_metadata` dictionary tables included, which CDSL's three Latin-1 tables need.
 # 0.8.1 adds the `etl.post_stages` this spec runs, `_self` metadata on literal codes, and the
-# `etl:` dataset descriptors (`license`, `raw_source_id_columns`, ...). The `[download]` extra
+# `etl:` dataset descriptors (`license`, `raw_source_id_columns`, ...). 0.9.0 writes `unit` in
+# codes.parquet as one String per code (and fails on a code with more than one). The `[download]` extra
 # provides `meds-extract-download`, which `meds-extract-run` spawns to stage the raw data.
 # suMEDS adds vocabulary titles and parents to the code metadata in its `sumeds_enrich` post-stage
 # (0.6.2), with the rules registered below. It soft-fails (a failed enrichment, e.g. without
 # internet, leaves the build as it was) and records the enrichment in `metadata/dataset.json`. It
 # is capped below the next minor for the same reason (its rules format and CLI are still 0.x).
 dependencies = [
-    "MEDS-extract[download]>=0.8.1,<0.9",
+    "MEDS-extract[download]>=0.9.0,<0.10",
     "sumeds>=0.6.2,<0.7",
 ]
 
@@ -50,8 +51,9 @@ CDSL = "CDSL_MEDS:sumeds_rules.yaml"
 # The post-stages (`etl.post_stages`): descriptions of the slot-coded diagnosis and neoplasm codes.
 [project.entry-points."MEDS_transforms.stages"]
 cdsl_describe_slot_codes = "CDSL_MEDS.code_descriptions:main"
-# One String `unit` per code in metadata/codes.parquet, run first (`etl.post_stages`).
-cdsl_collapse_unit_metadata = "CDSL_MEDS.unit_metadata:main"
+# Unit siblings and units stated in descriptions in metadata/codes.parquet, run first
+# (`etl.post_stages`).
+cdsl_unit_metadata = "CDSL_MEDS.unit_metadata:main"
 
 [project.urls]
 Homepage = "https://physionet.org/content/covid-data-shared-learning/1.0.0/"

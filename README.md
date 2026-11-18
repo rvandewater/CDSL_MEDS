@@ -45,8 +45,8 @@ This one command gives the complete build. It will:
     [Input encoding](#input-encoding)) and the dataset descriptors of `metadata/dataset.json` are
     declared in [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml). The downloaded
     files are not modified.
-3. Run the three post-stages the config declares: `cdsl_collapse_unit_metadata` makes each code's
-    `unit` one String (see [Code metadata](#code-metadata)), `cdsl_describe_slot_codes` describes the
+3. Run the three post-stages the config declares: `cdsl_unit_metadata` links codes that differ only
+    in their unit (see [Code metadata](#code-metadata)), `cdsl_describe_slot_codes` describes the
     slot-coded diagnosis and neoplasm codes from the release's own dictionary, then `sumeds_enrich` adds
     official vocabulary titles and parent codes with suMEDS (see
     [Enriching code metadata with suMEDS](#enriching-code-metadata-with-sumeds)).
@@ -87,7 +87,7 @@ the name `CDSL`. That registration is what makes `spec=CDSL` work. A second entr
 under the same name, which is how the config's `sumeds_enrich: {rules: CDSL}` and `--rules CDSL` find
 the enrichment rules. Two more register the `cdsl_describe_slot_codes` post-stage
 ([`src/CDSL_MEDS/code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) and the
-`cdsl_collapse_unit_metadata` post-stage ([`src/CDSL_MEDS/unit_metadata.py`](src/CDSL_MEDS/unit_metadata.py))
+`cdsl_unit_metadata` post-stage ([`src/CDSL_MEDS/unit_metadata.py`](src/CDSL_MEDS/unit_metadata.py))
 with MEDS-Transforms's `MEDS_transforms.stages` group.
 
 ### Input encoding
@@ -165,14 +165,13 @@ Sources:
 already the code's last part; an `UNKNOWN` code has none. The release and its PhysioNet documentation give
 no unit for the vital signs, age, urine output or medication dose, so those codes carry none. `unit` is a
 String: the unit of the code's numeric values as recorded, one per code (MEDS does not standardise this
-column). MEDS-Extract writes it as a list of the values seen; the first post-stage,
-`cdsl_collapse_unit_metadata` (`CDSL_MEDS.unit_metadata`), turns that list into one String and fails if
-a code has more than one unit. No CDSL code does, because the lab unit is part of the code.
+column). MEDS-Extract (since 0.9.0) writes it as one String per code and fails if a code has more than
+one unit. No CDSL code does, because the lab unit is part of the code.
 
-**Unit siblings.** The same post-stage links lab codes that differ only in their unit
-(`LAB//{item}//{unit}` codes of one item with two or more units): each gets the code without its unit,
-`LAB//{item}`, in its `parent_codes` (suMEDS then appends any vocabulary parents). This parent is an in-dataset code,
-not a vocabulary code. It gets a row of its own in `codes.parquet` (no events carry it): the siblings'
+**Unit siblings.** The first post-stage, `cdsl_unit_metadata` (`CDSL_MEDS.unit_metadata`), links lab
+codes that differ only in their unit (`LAB//{item}//{unit}` codes of one item with two or more units):
+each gets the code without its unit, `LAB//{item}`, in its `parent_codes` (suMEDS then appends any
+vocabulary parents). This parent is an in-dataset code, not a vocabulary code. It gets a row of its own in `codes.parquet` (no events carry it): the siblings'
 description if they all share one (or, when they differ only in the `; unit: …` part, that description
 without it), the vocabulary parents they all share, and no unit. A lab code whose item has a single
 unit, and an `UNKNOWN`-unit code, gets no such parent.
