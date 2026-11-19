@@ -33,6 +33,10 @@ etl:
     - image_id
   # Run after the canonical stages, in this order. Leave one out with `skip_stages=[NAME]`.
   post_stages:
+    # Links unit siblings to their stem code and fills units stated in descriptions
+    # (CDSL_MEDS.unit_metadata); MEDS-Extract (>= 0.9) itself writes `unit` as one String per code.
+    # First, so that suMEDS enriches the final set of codes.
+    - cdsl_unit_metadata
     # Describes DIAGNOSIS_ICD10// codes from the release's icd10_codes_dict.txt, and NEOPLASM_ICDO3//
     # codes with a template (CDSL_MEDS.code_descriptions).
     - cdsl_describe_slot_codes

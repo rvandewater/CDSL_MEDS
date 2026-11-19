@@ -41,8 +41,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        # MESSY-synth 0.1.0 targets MEDS-Extract 0.8, so it shares the project environment and the
-        # locked MEDS-Extract.
+        # MESSY-synth 0.1.0 shares the project environment. It pins MEDS-Extract below 0.9, so
+        # installing it downgrades MEDS-Extract; the `uv run --locked` calls below restore the locked
+        # MEDS-Extract 0.9, which MESSY-synth also runs on.
         run: |
           uv sync --locked
           uv pip install "MESSY_synth==0.1.0"
