@@ -40,6 +40,9 @@ etl:
     # Describes DIAGNOSIS_ICD10// codes from the release's icd10_codes_dict.txt, and NEOPLASM_ICDO3//
     # codes with a template (CDSL_MEDS.code_descriptions).
     - cdsl_describe_slot_codes
+    # One UCUM spelling for every `unit` (suMEDS's shared table, e.g. `Cel`, `mm[Hg]`, `mg/dL`); the
+    # spelling as recorded stays in `unit_source_value`, and an unknown spelling is kept as it is.
+    - sumeds_normalize_units
     # Adds vocabulary titles and parent codes with suMEDS and records it in metadata/dataset.json. It
     # soft-fails (e.g. without internet); `suMEDS-enrich OUTPUT_DIR` finishes it later.
     - sumeds_enrich:

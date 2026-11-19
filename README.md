@@ -45,9 +45,10 @@ This one command gives the complete build. It will:
     [Input encoding](#input-encoding)) and the dataset descriptors of `metadata/dataset.json` are
     declared in [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml). The downloaded
     files are not modified.
-3. Run the three post-stages the config declares: `cdsl_unit_metadata` links codes that differ only
+3. Run the four post-stages the config declares: `cdsl_unit_metadata` links codes that differ only
     in their unit (see [Code metadata](#code-metadata)), `cdsl_describe_slot_codes` describes the
-    slot-coded diagnosis and neoplasm codes from the release's own dictionary, then `sumeds_enrich` adds
+    slot-coded diagnosis and neoplasm codes from the release's own dictionary, suMEDS's
+    `sumeds_normalize_units` writes `unit` in UCUM, then `sumeds_enrich` adds
     official vocabulary titles and parent codes with suMEDS (see
     [Enriching code metadata with suMEDS](#enriching-code-metadata-with-sumeds)).
 
@@ -164,8 +165,10 @@ Sources:
 **Units.** Lab codes also carry their unit as **`unit`**, from the row's `lab_06.ud_result`, which is
 already the code's last part; an `UNKNOWN` code has none. The release and its PhysioNet documentation give
 no unit for the vital signs, age, urine output or medication dose, so those codes carry none. `unit` is a
-String: the unit of the code's numeric values as recorded, one per code (MEDS does not standardise this
-column). MEDS-Extract (since 0.9.0) writes it as one String per code and fails if a code has more than
+String: the unit of the code's numeric values, one per code, written in [UCUM](https://ucum.org/) by
+suMEDS's `sumeds_normalize_units` post-stage (`mg/dl` would become `mg/dL`). The spelling as recorded
+stays in `unit_source_value`, a spelling suMEDS does not know is kept as it is, and the codes keep their
+names (`LAB//{item}//{unit}` keeps the unit as recorded). MEDS-Extract (since 0.9.0) writes it as one String per code and fails if a code has more than
 one unit. No CDSL code does, because the lab unit is part of the code.
 
 **Unit siblings.** The first post-stage, `cdsl_unit_metadata` (`CDSL_MEDS.unit_metadata`), links lab
