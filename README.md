@@ -392,6 +392,7 @@ newest release first.
     `NEOPLASM//ICDO//3//{code}`; the code after the edition and its parents are unchanged. Migrate by replacing
     `^DIAGNOSIS_ICD10//` with `DIAGNOSIS//ICD//10CM//`, `^PROCEDURE_ICD10PCS//` with `PROCEDURE//ICD//10PCS//`
     and `^NEOPLASM_ICDO3//` with `NEOPLASM//ICDO//3//`.
+
 - **Diagnosis, procedure and neoplasm events are timed at hospital discharge** (were `1970-01-01 00:00:00`).
     The `DIAGNOSIS//ICD//10CM//…`, `PROCEDURE//ICD//10PCS//…` and `NEOPLASM//ICDO//3//…` events from
     `diagnosis_er_02` and `diagnosis_hosp_03` move to the stay's `HOSPITAL_DISCHARGE` time
@@ -400,6 +401,7 @@ newest release first.
     filter on `time.year == 1970` no longer finds them; select them by code prefix instead. Rebuild any
     predictions, task labels or cached cohorts made from an earlier build: the 1970 placement put these
     codes in the history of every prediction made during the stay.
+
 - **Medication courses are `MEDICATION//START//ATC5//…` and `MEDICATION//END//ATC5//…`**
     ([alignEHR#53](https://github.com/rvandewater/alignEHR/issues/53)). The start was the unmarked
     `MEDICATION//ATC5//{atc5}//ATC7//{atc7}` and the end `MEDICATION_END//ATC5//{atc5}//ATC7//{atc7}`. Both now
@@ -414,20 +416,25 @@ newest release first.
 
     To migrate, rewrite old codes with the regexes `^MEDICATION//ATC5//` → `MEDICATION//START//ATC5//` and
     `^MEDICATION_END//ATC5//` → `MEDICATION//END//ATC5//`.
+
 - **A lab result without a unit is `LAB//{item}//UNK`** (was `LAB//{item}//UNKNOWN`), as in the other MEDS
     ETLs. Migrate by replacing `^(LAB//.+)//UNKNOWN$` with `\1//UNK`. The discharge destination and ATC7
     fallbacks are not units and stay `UNKNOWN`.
+
 - **The unit in a lab code is stripped of surrounding whitespace, and a blank one is `UNK`**
     (`LAB//{item}//{unit}`). Before, `lab_06.ud_result` was copied as recorded: a padded unit (` mg`) gave
     a code of its own, and a blank or empty one gave a code ending in whitespace or in `//`, with no
     `unit`. No output change on the synthetic data; codes change only where a unit was padded or blank.
     To migrate, strip the last part of an old lab code, and write `UNK` where it is then empty:
     `^(LAB//.+?//)\s*(\S(?:.*\S)?)?\s*$` → `\1\2`.
+
 - **`codes.parquet` `unit` is one UCUM string per code** (MEDS-Extract 0.9 and suMEDS
     `sumeds_normalize_units`; it was a list of the units as recorded). The unit as recorded is in the new
     column `unit_source_value`.
+
 - **New rows in `codes.parquet` without events:** codes that differ only in their unit component get the code
     without the unit (`LAB//{item}`) as a parent, which has a row of its own.
+
 - **`codes.parquet` gains unit-free stem rows and stem parents for single-unit codes**
     ([#23](https://github.com/rvandewater/CDSL_MEDS/pull/23)). suMEDS's `sumeds_link_unit_siblings` now runs with `link_single_units: true`:
     every code that ends in its unit gets the code without the unit (its stem) as its last
@@ -436,6 +443,7 @@ newest release first.
     Events are unchanged. A synthetic (MESSY-synth) build is unchanged, as each of its lab items has several random units; on the release, every lab item recorded in a single unit gets a stem. To migrate, nothing is needed unless a tool expects every
     `codes.parquet` row to have events: drop the stem rows (no `code_template`, no `unit`), or
     ignore a parent that is the code without its last `//` component.
+
 - **Intermediate stage outputs are no longer kept.** Up to 0.1.0, a run left each stage's output in
     `<output_dir>/<stage>/` (`convert_to_parquet/`, `convert_to_MEDS_events/`, `cdsl_describe_slot_codes/`, `sumeds_enrich/`, …). The spec now sets MEDS-Extract's
     `etl.cleanup_intermediates: true`, so a successful run deletes those directories and keeps only
