@@ -355,6 +355,22 @@ when a pull request changes `src/` (the config, the post-stages or the suMEDS ru
 baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so check it with
 `--compare`.
 
+## Breaking changes
+
+Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
+newest release first.
+
+### Unreleased (next release after 0.1.0)
+
+- **A lab result without a unit is `LAB//{item}//UNK`** (was `LAB//{item}//UNKNOWN`), as in the other MEDS
+    ETLs. Migrate by replacing `^(LAB//.+)//UNKNOWN$` with `\1//UNK`. The discharge destination and ATC7
+    fallbacks are not units and stay `UNKNOWN`.
+- **`codes.parquet` `unit` is one UCUM string per code** (MEDS-Extract 0.9 and suMEDS
+    `sumeds_normalize_units`; it was a list of the units as recorded). The unit as recorded is in the new
+    column `unit_source_value`.
+- **New rows in `codes.parquet` without events:** codes that differ only in their unit component get the code
+    without the unit (`LAB//{item}`) as a parent, which has a row of its own.
+
 ## Citation
 
 If you use this ETL, please cite the CDSL database:
