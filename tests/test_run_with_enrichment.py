@@ -169,20 +169,20 @@ def test_vocabulary_codes_get_titles_and_parents(enriched_output: Path):
     rows = read_codes(enriched_output)
 
     # No description from the ETL: the ICD-10-PCS pack title fills it, and its ancestors are parents.
-    procedure = rows["PROCEDURE_ICD10PCS//5A1955Z"]
+    procedure = rows["PROCEDURE//ICD//10PCS//5A1955Z"]
     pcs = ["5A1955Z", "5A1955", "5A195", "5A19", "5A1", "5A", "5"]
     assert procedure["description"] == title("ICD10PCS", "5A1955Z")
     assert procedure["parent_codes"] == [f"ICD10PCS//{code}" for code in pcs]
     assert dict(procedure["parent_names"]) == {f"ICD10PCS//{code}": title("ICD10PCS", code) for code in pcs}
 
     # The release's own ICD-10-CM title is kept; the vocabulary code and its name are added.
-    diagnosis = rows["DIAGNOSIS_ICD10//I10"]
+    diagnosis = rows["DIAGNOSIS//ICD//10CM//I10"]
     assert diagnosis["description"] == "Essential (primary) hypertension"
     assert diagnosis["parent_codes"] == ["ICD10CM//I10"]
     assert dict(diagnosis["parent_names"]) == {"ICD10CM//I10": title("ICD10CM", "I10")}
 
     # ICD-O-3 and ATC have no suMEDS pack: their codes are tagged, without a name.
-    assert rows["NEOPLASM_ICDO3//8140/3"]["parent_codes"] == ["ICDO3//8140/3"]
+    assert rows["NEOPLASM//ICDO//3//8140/3"]["parent_codes"] == ["ICDO3//8140/3"]
     for family in ("MEDICATION//START", "MEDICATION//END"):
         medication = rows[f"{family}//ATC5//H03AA//ATC7//H03AA01"]
         assert medication["parent_codes"] == ["ATC//H03AA01"]

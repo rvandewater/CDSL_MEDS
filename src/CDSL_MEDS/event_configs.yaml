@@ -46,7 +46,7 @@ etl:
     # One UCUM spelling for every `unit` (suMEDS's shared table, e.g. `Cel`, `mm[Hg]`, `mg/dL`); the
     # spelling as recorded stays in `unit_source_value`, and an unknown spelling is kept as it is.
     - sumeds_normalize_units
-    # Describes DIAGNOSIS_ICD10// codes from the release's icd10_codes_dict.txt, and NEOPLASM_ICDO3//
+    # Describes DIAGNOSIS//ICD//10CM// codes from the release's icd10_codes_dict.txt, and NEOPLASM//ICDO//3//
     # codes with a template (CDSL_MEDS.code_descriptions).
     - cdsl_describe_slot_codes
     # Adds vocabulary titles and parent codes with suMEDS and records it in metadata/dataset.json. It
@@ -280,71 +280,71 @@ diagnosis_er_02:
         cols: { discharge_date: max }
 
   diagnosis_icd10_dia_ppal:
-    code: f"DIAGNOSIS_ICD10//{$dia_ppal}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_ppal}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_02:
-    code: f"DIAGNOSIS_ICD10//{$dia_02}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_02}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_03:
-    code: f"DIAGNOSIS_ICD10//{$dia_03}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_03}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_04:
-    code: f"DIAGNOSIS_ICD10//{$dia_04}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_04}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_05:
-    code: f"DIAGNOSIS_ICD10//{$dia_05}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_05}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_06:
-    code: f"DIAGNOSIS_ICD10//{$dia_06}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_06}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_07:
-    code: f"DIAGNOSIS_ICD10//{$dia_07}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_07}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_08:
-    code: f"DIAGNOSIS_ICD10//{$dia_08}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_08}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_09:
-    code: f"DIAGNOSIS_ICD10//{$dia_09}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_09}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_10:
-    code: f"DIAGNOSIS_ICD10//{$dia_10}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_10}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_11:
-    code: f"DIAGNOSIS_ICD10//{$dia_11}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_11}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_12:
-    code: f"DIAGNOSIS_ICD10//{$dia_12}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_12}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_01:
-    code: f"PROCEDURE_ICD10PCS//{$proc_01}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_01}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_02:
-    code: f"PROCEDURE_ICD10PCS//{$proc_02}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_02}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_03:
-    code: f"PROCEDURE_ICD10PCS//{$proc_03}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_03}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_04:
-    code: f"PROCEDURE_ICD10PCS//{$proc_04}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_04}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_05:
-    code: f"PROCEDURE_ICD10PCS//{$proc_05}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_05}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
 diagnosis_hosp_03:
@@ -360,183 +360,183 @@ diagnosis_hosp_03:
         cols: { discharge_date: max }
 
   diagnosis_icd10_dia_ppal:
-    code: f"DIAGNOSIS_ICD10//{$dia_ppal}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_ppal}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_02:
-    code: f"DIAGNOSIS_ICD10//{$dia_02}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_02}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_03:
-    code: f"DIAGNOSIS_ICD10//{$dia_03}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_03}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_04:
-    code: f"DIAGNOSIS_ICD10//{$dia_04}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_04}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_05:
-    code: f"DIAGNOSIS_ICD10//{$dia_05}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_05}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_06:
-    code: f"DIAGNOSIS_ICD10//{$dia_06}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_06}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_07:
-    code: f"DIAGNOSIS_ICD10//{$dia_07}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_07}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_08:
-    code: f"DIAGNOSIS_ICD10//{$dia_08}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_08}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_09:
-    code: f"DIAGNOSIS_ICD10//{$dia_09}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_09}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_10:
-    code: f"DIAGNOSIS_ICD10//{$dia_10}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_10}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_11:
-    code: f"DIAGNOSIS_ICD10//{$dia_11}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_11}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_12:
-    code: f"DIAGNOSIS_ICD10//{$dia_12}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_12}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_13:
-    code: f"DIAGNOSIS_ICD10//{$dia_13}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_13}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_14:
-    code: f"DIAGNOSIS_ICD10//{$dia_14}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_14}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_15:
-    code: f"DIAGNOSIS_ICD10//{$dia_15}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_15}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_16:
-    code: f"DIAGNOSIS_ICD10//{$dia_16}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_16}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_17:
-    code: f"DIAGNOSIS_ICD10//{$dia_17}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_17}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_18:
-    code: f"DIAGNOSIS_ICD10//{$dia_18}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_18}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_19:
-    code: f"DIAGNOSIS_ICD10//{$dia_19}"
+    code: f"DIAGNOSIS//ICD//10CM//{$dia_19}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_01:
-    code: f"PROCEDURE_ICD10PCS//{$proc_01}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_01}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_02:
-    code: f"PROCEDURE_ICD10PCS//{$proc_02}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_02}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_03:
-    code: f"PROCEDURE_ICD10PCS//{$proc_03}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_03}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_04:
-    code: f"PROCEDURE_ICD10PCS//{$proc_04}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_04}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_05:
-    code: f"PROCEDURE_ICD10PCS//{$proc_05}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_05}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_06:
-    code: f"PROCEDURE_ICD10PCS//{$proc_06}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_06}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_07:
-    code: f"PROCEDURE_ICD10PCS//{$proc_07}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_07}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_08:
-    code: f"PROCEDURE_ICD10PCS//{$proc_08}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_08}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_09:
-    code: f"PROCEDURE_ICD10PCS//{$proc_09}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_09}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_10:
-    code: f"PROCEDURE_ICD10PCS//{$proc_10}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_10}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_11:
-    code: f"PROCEDURE_ICD10PCS//{$proc_11}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_11}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_12:
-    code: f"PROCEDURE_ICD10PCS//{$proc_12}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_12}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_13:
-    code: f"PROCEDURE_ICD10PCS//{$proc_13}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_13}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_14:
-    code: f"PROCEDURE_ICD10PCS//{$proc_14}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_14}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_15:
-    code: f"PROCEDURE_ICD10PCS//{$proc_15}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_15}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_16:
-    code: f"PROCEDURE_ICD10PCS//{$proc_16}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_16}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_17:
-    code: f"PROCEDURE_ICD10PCS//{$proc_17}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_17}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_18:
-    code: f"PROCEDURE_ICD10PCS//{$proc_18}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_18}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_19:
-    code: f"PROCEDURE_ICD10PCS//{$proc_19}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_19}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_20:
-    code: f"PROCEDURE_ICD10PCS//{$proc_20}"
+    code: f"PROCEDURE//ICD//10PCS//{$proc_20}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_01:
-    code: f"NEOPLASM_ICDO3//{$neo_01}"
+    code: f"NEOPLASM//ICDO//3//{$neo_01}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_02:
-    code: f"NEOPLASM_ICDO3//{$neo_02}"
+    code: f"NEOPLASM//ICDO//3//{$neo_02}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_03:
-    code: f"NEOPLASM_ICDO3//{$neo_03}"
+    code: f"NEOPLASM//ICDO//3//{$neo_03}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_04:
-    code: f"NEOPLASM_ICDO3//{$neo_04}"
+    code: f"NEOPLASM//ICDO//3//{$neo_04}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_05:
-    code: f"NEOPLASM_ICDO3//{$neo_05}"
+    code: f"NEOPLASM//ICDO//3//{$neo_05}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_06:
-    code: f"NEOPLASM_ICDO3//{$neo_06}"
+    code: f"NEOPLASM//ICDO//3//{$neo_06}"
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
 medication_05:

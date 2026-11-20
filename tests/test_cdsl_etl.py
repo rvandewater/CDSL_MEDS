@@ -33,10 +33,10 @@ def test_etl_runs_on_a_minimal_valid_fixture(plain_output):
     CodeMetadataSchema.validate(codes)
     metadata = {r["code"]: r for r in codes.to_pylist()}
     undescribed = {c for c, r in metadata.items() if not r["description"]}
-    assert undescribed == {"PROCEDURE_ICD10PCS//5A1955Z"}
+    assert undescribed == {"PROCEDURE//ICD//10PCS//5A1955Z"}
     assert not [c for c, r in metadata.items() if r.get("parent_codes")]
-    assert metadata["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
-    assert metadata["NEOPLASM_ICDO3//8140/3"]["description"].startswith("Neoplasm, ICD-O-3 morphology")
+    assert metadata["DIAGNOSIS//ICD//10CM//I10"]["description"] == "Essential (primary) hypertension"
+    assert metadata["NEOPLASM//ICDO//3//8140/3"]["description"].startswith("Neoplasm, ICD-O-3 morphology")
     assert metadata["MEDICATION//START//ATC5//H03AA//ATC7//H03AA01"]["description"] == ATC7_NAME
     assert metadata["MEDICATION//END//ATC5//H03AA//ATC7//H03AA01"]["description"].startswith(
         f"End of medication: {ATC7_NAME}"
@@ -119,10 +119,10 @@ def test_coded_diagnoses_and_procedures_fall_at_discharge(plain_output):
     assert events.filter(pl.col("time") < pl.col("admission")).is_empty()
 
     coded = events.filter(
-        pl.col("code").str.contains(r"^(DIAGNOSIS_ICD10|PROCEDURE_ICD10PCS|NEOPLASM_ICDO3)//")
+        pl.col("code").str.contains(r"^(DIAGNOSIS//ICD//10CM|PROCEDURE//ICD//10PCS|NEOPLASM//ICDO//3)//")
     )
-    families = set(coded["code"].str.split("//").list.first())
-    assert families == {"DIAGNOSIS_ICD10", "PROCEDURE_ICD10PCS", "NEOPLASM_ICDO3"}
+    families = set(coded["code"].str.split("//").list.head(3).list.join("//"))
+    assert families == {"DIAGNOSIS//ICD//10CM", "PROCEDURE//ICD//10PCS", "NEOPLASM//ICDO//3"}
     assert (coded["time"] == coded["discharge"]).all()
     assert set(coded["time"].dt.strftime("%Y-%m-%d %H:%M:%S")) == {DISCHARGE_DATE}
 

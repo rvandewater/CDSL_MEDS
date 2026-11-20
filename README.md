@@ -106,8 +106,8 @@ cp1252.
 |                             | `EMERGENCY_DEPARTMENT_VISIT`, `EMERGENCY_DEPARTMENT//{department}`, `EMERGENCY_DIAGNOSIS//{diagnosis}`                                                            | Placed at the ED admission time.                                                          |
 |                             | `MECHANICAL_VENTILATION`                                                                                                                                          | Emitted at hospital admission when `mechvent` is `Yes`.                                   |
 |                             | `VITAL//{measurement}`                                                                                                                                            | The first and last ED vital signs, at their recorded times.                               |
-| `diagnosis_er_02`           | `DIAGNOSIS_ICD10//{code}`, `PROCEDURE_ICD10PCS//{code}`                                                                                                           | One event per populated diagnosis (12) and procedure (5) slot.                            |
-| `diagnosis_hosp_03`         | `DIAGNOSIS_ICD10//{code}`, `PROCEDURE_ICD10PCS//{code}`, `NEOPLASM_ICDO3//{code}`                                                                                 | One event per populated diagnosis (19), procedure (20) and neoplasm (6) slot.             |
+| `diagnosis_er_02`           | `DIAGNOSIS//ICD//10CM//{code}`, `PROCEDURE//ICD//10PCS//{code}`                                                                                                   | One event per populated diagnosis (12) and procedure (5) slot.                            |
+| `diagnosis_hosp_03`         | `DIAGNOSIS//ICD//10CM//{code}`, `PROCEDURE//ICD//10PCS//{code}`, `NEOPLASM//ICDO//3//{code}`                                                                      | One event per populated diagnosis (19), procedure (20) and neoplasm (6) slot.             |
 | `vital_signs_04`            | `VITAL//{measurement}`                                                                                                                                            | Blood pressure, temperature, heart rate, oxygen saturation and glucose.                   |
 | `medication_05`             | `MEDICATION//START//ATC5//{atc5}//ATC7//{atc7}`, `MEDICATION//END//ATC5//{atc5}//ATC7//{atc7}`                                                                    | The daily average dose is the start event's `numeric_value`; the commercial name is text. |
 | `lab_06`                    | `LAB//{item}//{unit}`                                                                                                                                             | `numeric_value`, `text_value` and the reference range are kept.                           |
@@ -136,9 +136,9 @@ translated.
 
 | Code family                                                                                                                                                   | Route                                                                                                | Description                                                                                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DIAGNOSIS_ICD10//{code}`                                                                                                                                     | `cdsl_describe_slot_codes` post-stage ([`code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) | the ICD-10-CM long title from the release's `icd10_codes_dict.txt`; ICD-O-3 morphology codes (`MMMM/B`) found in diagnosis columns get a template naming the code |
-| `PROCEDURE_ICD10PCS//{code}`                                                                                                                                  | none in the ETL                                                                                      | the CMS ICD-10-PCS title, added by suMEDS                                                                                                                         |
-| `NEOPLASM_ICDO3//{code}`                                                                                                                                      | `cdsl_describe_slot_codes` post-stage                                                                | a template naming the code (ICD-O-3 titles are licensed)                                                                                                          |
+| `DIAGNOSIS//ICD//10CM//{code}`                                                                                                                                | `cdsl_describe_slot_codes` post-stage ([`code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) | the ICD-10-CM long title from the release's `icd10_codes_dict.txt`; ICD-O-3 morphology codes (`MMMM/B`) found in diagnosis columns get a template naming the code |
+| `PROCEDURE//ICD//10PCS//{code}`                                                                                                                               | none in the ETL                                                                                      | the CMS ICD-10-PCS title, added by suMEDS                                                                                                                         |
+| `NEOPLASM//ICDO//3//{code}`                                                                                                                                   | `cdsl_describe_slot_codes` post-stage                                                                | a template naming the code (ICD-O-3 titles are licensed)                                                                                                          |
 | `MEDICATION//START//…`, `MEDICATION//END//…`                                                                                                                  | `atc7` join and `_self` block in `event_configs.yaml`                                                | the ATC7 name from the release's `atc7.csv` (prefixed "End of medication" for `MEDICATION//END`); for rows without an ATC7 code, a template naming the ATC5 code  |
 | `HOSPITAL_DISCHARGE`, `SEX`, `INPATIENT_DIAGNOSIS`, `EMERGENCY_DEPARTMENT`, `EMERGENCY_DIAGNOSIS`, `LAB`, `IMAGING`                                           | `_self` templates in `event_configs.yaml`                                                            | the code's values with the CDSL columns they come from                                                                                                            |
 | literal codes: `HOSPITAL_ADMISSION`, `ICU_ADMISSION`, `ICU_DISCHARGE`, `AGE_AT_ADMISSION`, `EMERGENCY_DEPARTMENT_VISIT`, `MECHANICAL_VENTILATION`, `VITAL//…` | constant `_self` blocks in `event_configs.yaml`                                                      | the meaning of the source columns in the CDSL documentation, with the source of each in a `cdsl-docs:` comment                                                    |
@@ -195,8 +195,11 @@ row's own `lab_06.ud_result`. So no code gains a unit this way, and no code is r
 the US ICD-10-CM (FY2021), and Spain's CIE-10-ES is the Spanish edition of the ICD-10 Clinical
 Modification
 ([Ministerio de Sanidad](https://www.sanidad.gob.es/areas/saludDigital/interoperabilidadSemantica/factoriaRecursos/recursosEU/estandarNacional.htm)),
-so the suMEDS rules map diagnosis codes to OMOP's `ICD10CM` vocabulary. CDSL already writes the codes
-with the dot where OMOP puts it.
+so the codes carry the edition token `10CM` (`DIAGNOSIS//ICD//10CM//{code}`) and the suMEDS rules map
+them to OMOP's `ICD10CM` vocabulary. CDSL already writes the codes with the dot where OMOP puts it.
+Procedures are CIE-10-ES Procedimientos, the Spanish edition of ICD-10-PCS (`PROCEDURE//ICD//10PCS//{code}`),
+and neoplasms are ICD-O-3 morphology codes (`NEOPLASM//ICDO//3//{code}`). Some diagnosis columns also hold
+ICD-O-3 morphology codes (`MMMM/B`); they keep the diagnosis layout, and suMEDS gives them `ICDO3` parents.
 
 ### Enriching code metadata with suMEDS
 
@@ -266,17 +269,17 @@ meds-extract-run spec=CDSL output_dir=$MEDS_OUTPUT_DIR do_download=false input_d
 ICD-10-CM and ICD-10-PCS codes are validated against suMEDS's versioned ontology data
 (sumeds-ontologies, pinned release), built from the CMS and CDC files. The rules add:
 
-- `DIAGNOSIS_ICD10` codes shaped like ICD-10-CM: parents `ICD10CM//{code}` and its ancestors; the CMS
+- `DIAGNOSIS//ICD//10CM` codes shaped like ICD-10-CM: parents `ICD10CM//{code}` and its ancestors; the CMS
     title where the release's dictionary has none.
-- `PROCEDURE_ICD10PCS` codes: parents `ICD10PCS//{code}` and its ancestors; the CMS title.
-- ICD-O-3 morphology codes (`NEOPLASM_ICDO3`, and `MMMM/B` codes in diagnosis columns): parent
+- `PROCEDURE//ICD//10PCS` codes: parents `ICD10PCS//{code}` and its ancestors; the CMS title.
+- ICD-O-3 morphology codes (`NEOPLASM//ICDO//3`, and `MMMM/B` codes in diagnosis columns): parent
     `ICDO3//{MMMM/B}`, the sixth (grade) digit dropped. ICD-O-3 is licensed, so suMEDS only tags these
     codes unless Athena validates them.
 - `MEDICATION//START` and `MEDICATION//END`: parent `ATC//{id_atc7}` when the ATC7 code is well formed and lies
     under the row's ATC5 code, else `ATC//{id_atc5}`. ATC is licensed too: tagged only, or validated with
     its ancestors by Athena.
 - Same-dataset parents: a diagnosis or procedure code gets the nearest shorter code of the same family
-    that CDSL contains (`DIAGNOSIS_ICD10//J18` for `DIAGNOSIS_ICD10//J18.9`).
+    that CDSL contains (`DIAGNOSIS//ICD//10CM//J18` for `DIAGNOSIS//ICD//10CM//J18.9`).
 
 suMEDS fills only missing descriptions, so the release's own descriptions are kept, and it never removes
 or rewrites existing metadata. It writes parents as `VOCABULARY//CODE`, and the titles of the parents it
@@ -365,8 +368,25 @@ baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so 
 
 ## Breaking changes
 
+Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
+newest release first.
+
 ### Unreleased (next release after 0.1.0)
 
+- **ICD codes name the vocabulary and its edition apart.** Every MEDS ETL of this family now writes
+    `<FAMILY>//<VOCABULARY>//<EDITION>//<code>`. `DIAGNOSIS_ICD10//{code}` is now `DIAGNOSIS//ICD//10CM//{code}`,
+    `PROCEDURE_ICD10PCS//{code}` is `PROCEDURE//ICD//10PCS//{code}` and `NEOPLASM_ICDO3//{code}` is
+    `NEOPLASM//ICDO//3//{code}`; the code after the edition and its parents are unchanged. Migrate by replacing
+    `^DIAGNOSIS_ICD10//` with `DIAGNOSIS//ICD//10CM//`, `^PROCEDURE_ICD10PCS//` with `PROCEDURE//ICD//10PCS//`
+    and `^NEOPLASM_ICDO3//` with `NEOPLASM//ICDO//3//`.
+- **Diagnosis, procedure and neoplasm events are timed at hospital discharge** (were `1970-01-01 00:00:00`).
+    The `DIAGNOSIS//ICD//10CM//…`, `PROCEDURE//ICD//10PCS//…` and `NEOPLASM//ICDO//3//…` events from
+    `diagnosis_er_02` and `diagnosis_hosp_03` move to the stay's `HOSPITAL_DISCHARGE` time
+    (`patient_01.discharge_date`). Their counts are unchanged (their codes are renamed as in the entry above), and the move itself
+    leaves `codes.parquet` unchanged. A
+    filter on `time.year == 1970` no longer finds them; select them by code prefix instead. Rebuild any
+    predictions, task labels or cached cohorts made from an earlier build: the 1970 placement put these
+    codes in the history of every prediction made during the stay.
 - **Medication courses are `MEDICATION//START//ATC5//…` and `MEDICATION//END//ATC5//…`**
     ([alignEHR#53](https://github.com/rvandewater/alignEHR/issues/53)). The start was the unmarked
     `MEDICATION//ATC5//{atc5}//ATC7//{atc7}` and the end `MEDICATION_END//ATC5//{atc5}//ATC7//{atc7}`. Both now
@@ -381,16 +401,6 @@ baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so 
 
     To migrate, rewrite old codes with the regexes `^MEDICATION//ATC5//` → `MEDICATION//START//ATC5//` and
     `^MEDICATION_END//ATC5//` → `MEDICATION//END//ATC5//`.
-Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
-newest release first.
-
-- **Diagnosis, procedure and neoplasm events are timed at hospital discharge** (were `1970-01-01 00:00:00`).
-    The `DIAGNOSIS_ICD10//…`, `PROCEDURE_ICD10PCS//…` and `NEOPLASM_ICDO3//…` events from
-    `diagnosis_er_02` and `diagnosis_hosp_03` move to the stay's `HOSPITAL_DISCHARGE` time
-    (`patient_01.discharge_date`). Their codes and counts are unchanged, and so is `codes.parquet`. A
-    filter on `time.year == 1970` no longer finds them; select them by code prefix instead. Rebuild any
-    predictions, task labels or cached cohorts made from an earlier build: the 1970 placement put these
-    codes in the history of every prediction made during the stay.
 - **A lab result without a unit is `LAB//{item}//UNK`** (was `LAB//{item}//UNKNOWN`), as in the other MEDS
     ETLs. Migrate by replacing `^(LAB//.+)//UNKNOWN$` with `\1//UNK`. The discharge destination and ATC7
     fallbacks are not units and stay `UNKNOWN`.
