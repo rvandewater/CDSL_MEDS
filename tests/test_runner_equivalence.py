@@ -42,4 +42,4 @@ def test_literal_codes_carry_their_code_template(plain_output: Path):
     assert codes["HOSPITAL_ADMISSION"]["code_template"] == "HOSPITAL_ADMISSION"
     assert codes["VITAL//HEART_RATE"]["code_template"] == '"VITAL//HEART_RATE"'
     # Slot-coded codes have one template per column, so they still carry none.
-    assert codes["DIAGNOSIS_ICD10//I10"]["code_template"] is None
+    assert codes["DIAGNOSIS//ICD//10CM//I10"]["code_template"] is None
