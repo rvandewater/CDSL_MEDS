@@ -177,11 +177,13 @@ codes that differ only in their unit (`LAB//{item}//{unit}` codes of one item wi
 each gets the code without its unit, `LAB//{item}`, in its `parent_codes` (suMEDS then appends any
 vocabulary parents). This parent is an in-dataset code, not a vocabulary code. It gets a row of its own in `codes.parquet` (no events carry it): the siblings'
 description if they all share one (or, when they differ only in the `; unit: …` part, that description
-without it), the vocabulary parents they all share, and no unit. A lab code whose item has a single
-unit gets no such parent. A `LAB//{item}//UNK` code (no unit) joins its item's unit siblings and gets the
+without it), the vocabulary parents they all share, and no unit. With `link_single_units: true`, a
+lab code whose item has a single unit gets its stem too (its description without the `; unit: …` part).
+A `LAB//{item}//UNK` code (no unit) joins its item's unit siblings and gets the
 stem too, without narrowing the stem's shared parents; on its own it gets none. CDSL uses the stage's
 default options (its default `unknown_unit_components`, `UNK`, covers these codes)
-plus `description_unit_pattern`, the `; unit: …` span of the lab descriptions this config writes. The
+plus `description_unit_pattern`, the `; unit: …` span of the lab descriptions this config writes, and
+`link_single_units`. The
 post-stages run in this order: `sumeds_link_unit_siblings`, `sumeds_normalize_units`,
 `cdsl_describe_slot_codes`, `sumeds_enrich`.
 
@@ -354,6 +356,19 @@ credentialed release, so the [Summary stats workflow](.github/workflows/summary-
 when a pull request changes `src/` (the config, the post-stages or the suMEDS rules) without regenerating the
 baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so check it with
 `--compare`.
+
+## Breaking changes
+
+### Unreleased
+
+- **`codes.parquet` gains unit-free stem rows and stem parents for single-unit codes**
+    ([#23](https://github.com/rvandewater/CDSL_MEDS/pull/23)). suMEDS's `sumeds_link_unit_siblings` now runs with `link_single_units: true`:
+    every code that ends in its unit gets the code without the unit (its stem) as its last
+    `parent_codes` entry, and the stem gets a row of its own (no unit, no events), also when the
+    item has a single unit (`LAB//{item}//{unit}` gets `LAB//{item}`). Before, only items recorded in two or more units did.
+    Events are unchanged. A synthetic (MESSY-synth) build is unchanged, as each of its lab items has several random units; on the release, every lab item recorded in a single unit gets a stem. To migrate, nothing is needed unless a tool expects every
+    `codes.parquet` row to have events: drop the stem rows (no `code_template`, no `unit`), or
+    ignore a parent that is the code without its last `//` component.
 
 ## Citation
 

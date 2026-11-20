@@ -212,7 +212,12 @@ def test_skipping_the_stage_leaves_no_record(plain_output: Path):
     assert (logs / "cdsl_describe_slot_codes.done").exists()
     assert not (logs / "sumeds_enrich.done").exists()
     assert (logs / "sumeds_link_unit_siblings.done").exists()
-    assert not [code for code, row in read_codes(plain_output).items() if row.get("parent_codes")]
+    # Only the unit-free stems of `sumeds_link_unit_siblings`, which is not skipped.
+    assert all(
+        row["parent_codes"] == [code.rsplit("//", 1)[0]]
+        for code, row in read_codes(plain_output).items()
+        if row.get("parent_codes")
+    )
 
 
 def test_a_failed_enrichment_keeps_the_build_and_can_be_retried(
