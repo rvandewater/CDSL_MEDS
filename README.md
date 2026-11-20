@@ -440,7 +440,7 @@ newest release first.
     every code that ends in its unit gets the code without the unit (its stem) as its last
     `parent_codes` entry, and the stem gets a row of its own (no unit, no events), also when the
     item has a single unit (`LAB//{item}//{unit}` gets `LAB//{item}`). Before, only items recorded in two or more units did.
-    Events are unchanged. A synthetic (MESSY-synth) build is unchanged, as each of its lab items has several random units; on the release, every lab item recorded in a single unit gets a stem. To migrate, nothing is needed unless a tool expects every
+    Events are unchanged. On a MESSY-synth 0.1.1 build, 4 single-unit lab codes get a stem (4 new rows); on the release, every lab item recorded in a single unit gets one. To migrate, nothing is needed unless a tool expects every
     `codes.parquet` row to have events: drop the stem rows (no `code_template`, no `unit`), or
     ignore a parent that is the code without its last `//` component.
 
