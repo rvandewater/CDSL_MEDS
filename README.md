@@ -70,6 +70,15 @@ meds-extract-run spec=CDSL output_dir=$MEDS_OUTPUT_DIR do_download=false \
 Run `meds-extract-run --help` for every option. Rerunning the same command on an existing output only
 runs the stages that have not finished (each finished stage leaves `.logs/<stage>.done` in the output).
 
+Intermediate stage outputs are deleted after a successful run, by default: the spec sets
+MEDS-Extract's `etl.cleanup_intermediates: true`, so a finished `$MEDS_OUTPUT_DIR` holds only `data/`,
+`metadata/`, `.logs/` and `.meds_extract_run/`. A failed run keeps them, so the same command resumes
+where it stopped, and the same command on a finished output still does nothing. To keep them (to look
+at a stage's output; `$MEDS_OUTPUT_DIR/.logs/pipeline.log` keeps the stage logs either way), add
+`"overrides=['cleanup_intermediates=false']"`. Cleanup never deletes raw data: a download into the
+default `$MEDS_OUTPUT_DIR/.meds_extract_run/raw_input` stays, and `download_dest_dir=` elsewhere lets other
+output directories reuse it.
+
 ## How this ETL is defined
 
 The whole ETL is one MESSY (MEDS-Extract Specification Syntax YAML) file,
@@ -417,6 +426,12 @@ newest release first.
     column `unit_source_value`.
 - **New rows in `codes.parquet` without events:** codes that differ only in their unit component get the code
     without the unit (`LAB//{item}`) as a parent, which has a row of its own.
+- **Intermediate stage outputs are no longer kept.** Up to 0.1.0, a run left each stage's output in
+    `<output_dir>/<stage>/` (`convert_to_parquet/`, `convert_to_MEDS_events/`, `cdsl_describe_slot_codes/`, `sumeds_enrich/`, …). The spec now sets MEDS-Extract's
+    `etl.cleanup_intermediates: true`, so a successful run deletes those directories and keeps only
+    `data/`, `metadata/`, `.logs/` and `.meds_extract_run/`. The MEDS data and metadata are
+    unchanged. To migrate, add `"overrides=['cleanup_intermediates=false']"` to `meds-extract-run`
+    wherever you read a stage directory after the run.
 
 ## Citation
 
