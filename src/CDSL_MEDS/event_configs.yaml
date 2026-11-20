@@ -33,16 +33,20 @@ etl:
     - image_id
   # Run after the canonical stages, in this order. Leave one out with `skip_stages=[NAME]`.
   post_stages:
-    # Links unit siblings to their stem code and fills units stated in descriptions
-    # (CDSL_MEDS.unit_metadata); MEDS-Extract (>= 0.9) itself writes `unit` as one String per code.
-    # First, so that suMEDS enriches the final set of codes.
-    - cdsl_unit_metadata
-    # Describes DIAGNOSIS_ICD10// codes from the release's icd10_codes_dict.txt, and NEOPLASM_ICDO3//
-    # codes with a template (CDSL_MEDS.code_descriptions).
-    - cdsl_describe_slot_codes
+    # suMEDS's shared stage links unit siblings (`LAB//<item>//<unit>` codes of one item) to their
+    # stem code `LAB//<item>`, which gets a row of its own, and fills units stated in descriptions
+    # (https://github.com/rvandewater/suMEDS/blob/main/docs/unit_siblings.md). MEDS-Extract (>= 0.9)
+    # itself writes `unit` as one String per code. Default options, plus the span in which this
+    # config's lab descriptions state their unit, so a stem row's description is its siblings'
+    # without that span. First, so that suMEDS enriches the final set of codes.
+    - sumeds_link_unit_siblings:
+        description_unit_pattern: '; unit: (?P<unit>.+?)(?= \(CDSL lab_06\.item_lab, lab_06\.ud_result\)$)'
     # One UCUM spelling for every `unit` (suMEDS's shared table, e.g. `Cel`, `mm[Hg]`, `mg/dL`); the
     # spelling as recorded stays in `unit_source_value`, and an unknown spelling is kept as it is.
     - sumeds_normalize_units
+    # Describes DIAGNOSIS_ICD10// codes from the release's icd10_codes_dict.txt, and NEOPLASM_ICDO3//
+    # codes with a template (CDSL_MEDS.code_descriptions).
+    - cdsl_describe_slot_codes
     # Adds vocabulary titles and parent codes with suMEDS and records it in metadata/dataset.json. It
     # soft-fails (e.g. without internet); `suMEDS-enrich OUTPUT_DIR` finishes it later.
     - sumeds_enrich:

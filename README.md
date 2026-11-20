@@ -45,10 +45,10 @@ This one command gives the complete build. It will:
     [Input encoding](#input-encoding)) and the dataset descriptors of `metadata/dataset.json` are
     declared in [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml). The downloaded
     files are not modified.
-3. Run the four post-stages the config declares: `cdsl_unit_metadata` links codes that differ only
-    in their unit (see [Code metadata](#code-metadata)), `cdsl_describe_slot_codes` describes the
-    slot-coded diagnosis and neoplasm codes from the release's own dictionary, suMEDS's
-    `sumeds_normalize_units` writes `unit` in UCUM, then `sumeds_enrich` adds
+3. Run the four post-stages the config declares: suMEDS's `sumeds_link_unit_siblings` links codes
+    that differ only in their unit (see [Code metadata](#code-metadata)), suMEDS's
+    `sumeds_normalize_units` writes `unit` in UCUM, `cdsl_describe_slot_codes` describes the
+    slot-coded diagnosis and neoplasm codes from the release's own dictionary, then `sumeds_enrich` adds
     official vocabulary titles and parent codes with suMEDS (see
     [Enriching code metadata with suMEDS](#enriching-code-metadata-with-sumeds)).
 
@@ -86,10 +86,9 @@ The whole ETL is one MESSY (MEDS-Extract Specification Syntax YAML) file,
 the name `CDSL`. That registration is what makes `spec=CDSL` work. A second entry point registers
 [`src/CDSL_MEDS/sumeds_rules.yaml`](src/CDSL_MEDS/sumeds_rules.yaml) with suMEDS's `sumeds.rules` group
 under the same name, which is how the config's `sumeds_enrich: {rules: CDSL}` and `--rules CDSL` find
-the enrichment rules. Two more register the `cdsl_describe_slot_codes` post-stage
-([`src/CDSL_MEDS/code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) and the
-`cdsl_unit_metadata` post-stage ([`src/CDSL_MEDS/unit_metadata.py`](src/CDSL_MEDS/unit_metadata.py))
-with MEDS-Transforms's `MEDS_transforms.stages` group.
+the enrichment rules. One more registers the `cdsl_describe_slot_codes` post-stage
+([`src/CDSL_MEDS/code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) with MEDS-Transforms's
+`MEDS_transforms.stages` group; the other post-stages come with suMEDS.
 
 ### Input encoding
 
@@ -171,15 +170,19 @@ stays in `unit_source_value`, a spelling suMEDS does not know is kept as it is, 
 names (`LAB//{item}//{unit}` keeps the unit as recorded). MEDS-Extract (since 0.9.0) writes it as one String per code and fails if a code has more than
 one unit. No CDSL code does, because the lab unit is part of the code.
 
-**Unit siblings.** The first post-stage, `cdsl_unit_metadata` (`CDSL_MEDS.unit_metadata`), links lab
+**Unit siblings.** The first post-stage, suMEDS's shared `sumeds_link_unit_siblings`
+([docs](https://github.com/rvandewater/suMEDS/blob/main/docs/unit_siblings.md)), links lab
 codes that differ only in their unit (`LAB//{item}//{unit}` codes of one item with two or more units):
 each gets the code without its unit, `LAB//{item}`, in its `parent_codes` (suMEDS then appends any
 vocabulary parents). This parent is an in-dataset code, not a vocabulary code. It gets a row of its own in `codes.parquet` (no events carry it): the siblings'
 description if they all share one (or, when they differ only in the `; unit: …` part, that description
 without it), the vocabulary parents they all share, and no unit. A lab code whose item has a single
-unit, and an `UNKNOWN`-unit code, gets no such parent.
+unit, and an `UNKNOWN`-unit code, gets no such parent. CDSL uses the stage's default options
+plus `description_unit_pattern`, the `; unit: …` span of the lab descriptions this config writes. The
+post-stages run in this order: `sumeds_link_unit_siblings`, `sumeds_normalize_units`,
+`cdsl_describe_slot_codes`, `sumeds_enrich`.
 
-**Units in descriptions.** The post-stage can also fill a missing `unit` from a unit the code's
+**Units in descriptions.** The stage can also fill a missing `unit` from a unit the code's
 description states (never overriding a unit from the data). CDSL has no dataset dictionary that states
 units: the release's descriptions give none, and the lab descriptions are written by this ETL from the
 row's own `lab_06.ud_result`. So no code gains a unit this way, and no code is renamed.

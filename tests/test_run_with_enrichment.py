@@ -1,8 +1,9 @@
 """``meds-extract-run spec=CDSL`` runs the ETL, CDSL's own descriptions and the suMEDS enrichment, offline.
 
-The spec's ``etl.post_stages`` run ``cdsl_describe_slot_codes``, suMEDS's ``sumeds_normalize_units``
-and then suMEDS's ``sumeds_enrich`` stage, with the rules this package registers in suMEDS's
-``sumeds.rules`` entry-point group under the spec's name, ``CDSL``. The ontology source is a tiny pack
+The spec's ``etl.post_stages`` run suMEDS's ``sumeds_link_unit_siblings`` and
+``sumeds_normalize_units``, ``cdsl_describe_slot_codes``, and then suMEDS's ``sumeds_enrich`` stage,
+with the rules this package registers in suMEDS's ``sumeds.rules`` entry-point group under the spec's
+name, ``CDSL``. The ontology source is a tiny pack
 repository in suMEDS's ``sumeds-ontologies/0.1`` layout, built here with made-up titles for the
 synthetic codes of ``conftest.py`` (and their ancestors), so the test reads nothing over the network
 and does not depend on the published packs. It reaches the stage as a runtime option,
@@ -210,7 +211,7 @@ def test_skipping_the_stage_leaves_no_record(plain_output: Path):
     logs = plain_output / ".logs"
     assert (logs / "cdsl_describe_slot_codes.done").exists()
     assert not (logs / "sumeds_enrich.done").exists()
-    assert (logs / "cdsl_unit_metadata.done").exists()
+    assert (logs / "sumeds_link_unit_siblings.done").exists()
     assert not [code for code, row in read_codes(plain_output).items() if row.get("parent_codes")]
 
 
