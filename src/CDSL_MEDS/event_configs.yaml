@@ -42,9 +42,11 @@ etl:
     # (https://github.com/rvandewater/suMEDS/blob/main/docs/unit_siblings.md). MEDS-Extract (>= 0.9)
     # itself writes `unit` as one String per code. Default options, plus the span in which this
     # config's lab descriptions state their unit, so a stem row's description is its siblings'
-    # without that span. First, so that suMEDS enriches the final set of codes.
+    # without that span. With `link_single_units`, a lab code ending in its unit gets its stem also
+    # when its item has a single unit. First, so that suMEDS enriches the final set of codes.
     - sumeds_link_unit_siblings:
         description_unit_pattern: '; unit: (?P<unit>.+?)(?= \(CDSL lab_06\.item_lab, lab_06\.ud_result\)$)'
+        link_single_units: true
     # One UCUM spelling for every `unit` (suMEDS's shared table, e.g. `Cel`, `mm[Hg]`, `mg/dL`); the
     # spelling as recorded stays in `unit_source_value`, and an unknown spelling is kept as it is.
     - sumeds_normalize_units
