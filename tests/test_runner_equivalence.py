@@ -30,9 +30,22 @@ def test_same_codes_descriptions_and_event_counts(plain_output: Path, golden: di
     built = {
         code: {"description": description, "events": counts[code]}
         for code, description in codes.select("code", "description").iter_rows()
+        if code in counts
     }
+    # The fixture has since gained `ROW_OVERRIDES` (conftest.py): subject 2's padded lab unit " X "
+    # still gives `LAB//X//X`, while subject 3's lab moved to item "Y" with a blank unit, `LAB//Y//UNK`.
+    expected = json.loads(json.dumps(golden["codes"]))
+    expected["LAB//X//X"]["events"] -= 1
+    expected["LAB//Y//UNK"] = {
+        "description": "Laboratory test: Y; unit: UNK (CDSL lab_06.item_lab, lab_06.ud_result)",
+        "events": 1,
+    }
+    # The only codes without events are unit-free stems (suMEDS's `sumeds_link_unit_siblings`, which
+    # the runner predates): each is another code without its unit component.
+    stems = set(codes["code"]) - set(counts)
+    assert all(any(c.startswith(f"{stem}//") for c in counts) for stem in stems), stems
     assert events.height == golden["events"]
-    assert built == golden["codes"]
+    assert built == expected
 
 
 def test_literal_codes_carry_their_code_template(plain_output: Path):
@@ -42,4 +55,4 @@ def test_literal_codes_carry_their_code_template(plain_output: Path):
     assert codes["HOSPITAL_ADMISSION"]["code_template"] == "HOSPITAL_ADMISSION"
     assert codes["VITAL//HEART_RATE"]["code_template"] == '"VITAL//HEART_RATE"'
     # Slot-coded codes have one template per column, so they still carry none.
-    assert codes["DIAGNOSIS_ICD10//I10"]["code_template"] is None
+    assert codes["DIAGNOSIS//ICD//10CM//I10"]["code_template"] is None

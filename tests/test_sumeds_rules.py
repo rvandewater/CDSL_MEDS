@@ -35,18 +35,18 @@ MEDICATIONS = [  # (id_atc5, id_atc7)
 # The first ontology rule, in file order, that resolves each example code (suMEDS ranks the rules
 # that way), and the vocabulary code it resolves to. Codes not listed match no rule.
 EXPECTED_ONTOLOGY = {
-    "DIAGNOSIS_ICD10//I10": ("cdsl-icd10cm-diagnoses", "I10"),
-    "DIAGNOSIS_ICD10//J18": ("cdsl-icd10cm-diagnoses", "J18"),
-    "DIAGNOSIS_ICD10//J18.9": ("cdsl-icd10cm-diagnoses", "J18.9"),
-    "DIAGNOSIS_ICD10//U07.1": ("cdsl-icd10cm-diagnoses", "U07.1"),
-    "DIAGNOSIS_ICD10//S72.0": ("cdsl-icd10cm-diagnoses", "S72.0"),
-    "DIAGNOSIS_ICD10//S72.001A": ("cdsl-icd10cm-diagnoses", "S72.001A"),
-    "DIAGNOSIS_ICD10//8140/3": ("cdsl-icdo3-diagnoses", "8140/3"),
-    "DIAGNOSIS_ICD10//8000/31": ("cdsl-icdo3-diagnoses", "8000/3"),
-    "PROCEDURE_ICD10PCS//5A1955Z": ("cdsl-icd10pcs-procedures", "5A1955Z"),
-    "PROCEDURE_ICD10PCS//0BH17EZ": ("cdsl-icd10pcs-procedures", "0BH17EZ"),
-    "NEOPLASM_ICDO3//8140/3": ("cdsl-icdo3-neoplasms", "8140/3"),
-    "NEOPLASM_ICDO3//8140/32": ("cdsl-icdo3-neoplasms", "8140/3"),
+    "DIAGNOSIS//ICD//10CM//I10": ("cdsl-icd10cm-diagnoses", "I10"),
+    "DIAGNOSIS//ICD//10CM//J18": ("cdsl-icd10cm-diagnoses", "J18"),
+    "DIAGNOSIS//ICD//10CM//J18.9": ("cdsl-icd10cm-diagnoses", "J18.9"),
+    "DIAGNOSIS//ICD//10CM//U07.1": ("cdsl-icd10cm-diagnoses", "U07.1"),
+    "DIAGNOSIS//ICD//10CM//S72.0": ("cdsl-icd10cm-diagnoses", "S72.0"),
+    "DIAGNOSIS//ICD//10CM//S72.001A": ("cdsl-icd10cm-diagnoses", "S72.001A"),
+    "DIAGNOSIS//ICD//10CM//8140/3": ("cdsl-icdo3-diagnoses", "8140/3"),
+    "DIAGNOSIS//ICD//10CM//8000/31": ("cdsl-icdo3-diagnoses", "8000/3"),
+    "PROCEDURE//ICD//10PCS//5A1955Z": ("cdsl-icd10pcs-procedures", "5A1955Z"),
+    "PROCEDURE//ICD//10PCS//0BH17EZ": ("cdsl-icd10pcs-procedures", "0BH17EZ"),
+    "NEOPLASM//ICDO//3//8140/3": ("cdsl-icdo3-neoplasms", "8140/3"),
+    "NEOPLASM//ICDO//3//8140/32": ("cdsl-icdo3-neoplasms", "8140/3"),
     **{
         f"{family}//ATC5//{atc5}//ATC7//{atc7}": (rule_id, value)
         for family in ("MEDICATION//START", "MEDICATION//END")
@@ -60,12 +60,12 @@ EXPECTED_ONTOLOGY = {
 # Hierarchy rule id -> example code -> the parent suMEDS adds from the other example codes.
 EXPECTED_HIERARCHY = {
     "cdsl-diagnosis-prefixes": {
-        "DIAGNOSIS_ICD10//J18.9": ["DIAGNOSIS_ICD10//J18"],
-        "DIAGNOSIS_ICD10//S72.001A": ["DIAGNOSIS_ICD10//S72.0"],
+        "DIAGNOSIS//ICD//10CM//J18.9": ["DIAGNOSIS//ICD//10CM//J18"],
+        "DIAGNOSIS//ICD//10CM//S72.001A": ["DIAGNOSIS//ICD//10CM//S72.0"],
     },
     "cdsl-procedure-prefixes": {
-        "PROCEDURE_ICD10PCS//5A1955Z": ["PROCEDURE_ICD10PCS//5A19"],
-        "PROCEDURE_ICD10PCS//0BH17EZ": ["PROCEDURE_ICD10PCS//0BH"],
+        "PROCEDURE//ICD//10PCS//5A1955Z": ["PROCEDURE//ICD//10PCS//5A19"],
+        "PROCEDURE//ICD//10PCS//0BH17EZ": ["PROCEDURE//ICD//10PCS//0BH"],
     },
 }
 

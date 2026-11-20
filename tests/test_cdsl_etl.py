@@ -33,10 +33,14 @@ def test_etl_runs_on_a_minimal_valid_fixture(plain_output):
     CodeMetadataSchema.validate(codes)
     metadata = {r["code"]: r for r in codes.to_pylist()}
     undescribed = {c for c, r in metadata.items() if not r["description"]}
-    assert undescribed == {"PROCEDURE_ICD10PCS//5A1955Z"}
-    assert not [c for c, r in metadata.items() if r.get("parent_codes")]
-    assert metadata["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
-    assert metadata["NEOPLASM_ICDO3//8140/3"]["description"].startswith("Neoplasm, ICD-O-3 morphology")
+    assert undescribed == {"PROCEDURE//ICD//10PCS//5A1955Z"}
+    # The only parents are unit-free stems (`sumeds_link_unit_siblings`: `LAB//<item>` for
+    # `LAB//<item>//<unit>`), in-dataset codes rather than vocabulary codes.
+    assert all(
+        r["parent_codes"] == [c.rsplit("//", 1)[0]] for c, r in metadata.items() if r.get("parent_codes")
+    )
+    assert metadata["DIAGNOSIS//ICD//10CM//I10"]["description"] == "Essential (primary) hypertension"
+    assert metadata["NEOPLASM//ICDO//3//8140/3"]["description"].startswith("Neoplasm, ICD-O-3 morphology")
     assert metadata["MEDICATION//START//ATC5//H03AA//ATC7//H03AA01"]["description"] == ATC7_NAME
     assert metadata["MEDICATION//END//ATC5//H03AA//ATC7//H03AA01"]["description"].startswith(
         f"End of medication: {ATC7_NAME}"
@@ -59,6 +63,25 @@ def test_lab_codes_carry_their_unit(plain_output):
     assert not metadata["AGE_AT_ADMISSION"]["unit"]
 
 
+def test_padded_and_blank_lab_units(plain_output):
+    """The fixture's subject 2 records its lab unit as " X " and subject 3 (item "Y") a blank one: the first
+    is `LAB//X//X` like every other subject's, and the second `LAB//Y//UNK`."""
+    events = pl.concat([pl.read_parquet(fp) for fp in (plain_output / "data").rglob("*.parquet")])
+    labs = events.filter(pl.col("code").str.starts_with("LAB//"))
+    counts = dict(labs.group_by("code").len().iter_rows())
+    assert counts == {"LAB//X//X": 9, "LAB//Y//UNK": 1}
+    assert not events.filter(pl.col("code").str.contains(r"(\s|//)$")).height
+    codes = pl.read_parquet(plain_output / "metadata/codes.parquet")
+    metadata = {r["code"]: r for r in codes.to_dicts()}
+    assert metadata["LAB//Y//UNK"]["unit"] is None
+    assert metadata["LAB//Y//UNK"]["description"] == (
+        "Laboratory test: Y; unit: UNK (CDSL lab_06.item_lab, lab_06.ud_result)"
+    )
+    assert metadata["LAB//X//X"]["description"] == (
+        "Laboratory test: X; unit: X (CDSL lab_06.item_lab, lab_06.ud_result)"
+    )
+
+
 def test_lab_results_without_a_unit_join_their_item():
     """A lab result without a unit is `LAB//<item>//UNK`, as in the other MEDS ETLs, so suMEDS's
     `sumeds_link_unit_siblings`, with this config's options and its default `unknown_unit_components` ([UNK]),
@@ -68,8 +91,9 @@ def test_lab_results_without_a_unit_join_their_item():
     """
     raw = yaml.safe_load(CONFIG_FP.read_text())
     lab = raw["lab_06"]["laboratory_result"]
-    assert lab["code"] == "f\"LAB//{$item_lab}//{$ud_result ?? 'UNK'}\""
-    assert "?? 'UNK'}" in lab["_metadata"]["_self"]["description"]
+    assert lab["code"] == 'f"LAB//{$item_lab}//{$_value_unit}"'
+    assert "{$_value_unit}" in lab["_metadata"]["_self"]["description"]
+    assert raw["lab_06"]["_table"]["cols"]["_value_unit"].endswith('?? "UNK"')
     (options,) = [
         stage["sumeds_link_unit_siblings"]
         for stage in raw["etl"]["post_stages"]
@@ -119,10 +143,10 @@ def test_coded_diagnoses_and_procedures_fall_at_discharge(plain_output):
     assert events.filter(pl.col("time") < pl.col("admission")).is_empty()
 
     coded = events.filter(
-        pl.col("code").str.contains(r"^(DIAGNOSIS_ICD10|PROCEDURE_ICD10PCS|NEOPLASM_ICDO3)//")
+        pl.col("code").str.contains(r"^(DIAGNOSIS//ICD//10CM|PROCEDURE//ICD//10PCS|NEOPLASM//ICDO//3)//")
     )
-    families = set(coded["code"].str.split("//").list.first())
-    assert families == {"DIAGNOSIS_ICD10", "PROCEDURE_ICD10PCS", "NEOPLASM_ICDO3"}
+    families = set(coded["code"].str.split("//").list.head(3).list.join("//"))
+    assert families == {"DIAGNOSIS//ICD//10CM", "PROCEDURE//ICD//10PCS", "NEOPLASM//ICDO//3"}
     assert (coded["time"] == coded["discharge"]).all()
     assert set(coded["time"].dt.strftime("%Y-%m-%d %H:%M:%S")) == {DISCHARGE_DATE}
 
