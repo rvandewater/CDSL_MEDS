@@ -31,8 +31,16 @@ def test_same_codes_descriptions_and_event_counts(plain_output: Path, golden: di
         code: {"description": description, "events": counts[code]}
         for code, description in codes.select("code", "description").iter_rows()
     }
+    # The fixture has since gained `ROW_OVERRIDES` (conftest.py): subject 2's padded lab unit " X "
+    # still gives `LAB//X//X`, while subject 3's lab moved to item "Y" with a blank unit, `LAB//Y//UNK`.
+    expected = json.loads(json.dumps(golden["codes"]))
+    expected["LAB//X//X"]["events"] -= 1
+    expected["LAB//Y//UNK"] = {
+        "description": "Laboratory test: Y; unit: UNK (CDSL lab_06.item_lab, lab_06.ud_result)",
+        "events": 1,
+    }
     assert events.height == golden["events"]
-    assert built == golden["codes"]
+    assert built == expected
 
 
 def test_literal_codes_carry_their_code_template(plain_output: Path):

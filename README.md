@@ -118,7 +118,9 @@ cp1252.
 value is the `numeric_value`.
 
 A missing discharge destination or ATC7 code becomes `UNKNOWN` in the code, and a missing lab unit `UNK`
-(`LAB//{item}//UNK`), as in the other MEDS ETLs. A row with a
+(`LAB//{item}//UNK`), as in the other MEDS ETLs. The lab unit in a code is stripped of surrounding
+whitespace; missing or blank is `UNK`. MEDS-Extract compares units the same way when it writes `unit`
+(stripped, blanks dropped), so ` mg` and `mg` give one code. A row with a
 missing time produces no event. Source row IDs (`medication_id`, `lab_id`, `vital_sign_id`) are kept as
 columns, so repeated identical measurements are not collapsed.
 
@@ -354,6 +356,20 @@ credentialed release, so the [Summary stats workflow](.github/workflows/summary-
 when a pull request changes `src/` (the config, the post-stages or the suMEDS rules) without regenerating the
 baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so check it with
 `--compare`.
+
+## Breaking changes
+
+Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
+newest release first.
+
+### Unreleased (next release after 0.1.0)
+
+- **The unit in a lab code is stripped of surrounding whitespace, and a blank one is `UNK`**
+    (`LAB//{item}//{unit}`). Before, `lab_06.ud_result` was copied as recorded: a padded unit (` mg`) gave
+    a code of its own, and a blank or empty one gave a code ending in whitespace or in `//`, with no
+    `unit`. No output change on the synthetic data; codes change only where a unit was padded or blank.
+    To migrate, strip the last part of an old lab code, and write `UNK` where it is then empty:
+    `^(LAB//.+?//)\s*(\S(?:.*\S)?)?\s*$` → `\1\2`.
 
 ## Citation
 

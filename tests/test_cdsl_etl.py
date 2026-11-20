@@ -59,6 +59,25 @@ def test_lab_codes_carry_their_unit(plain_output):
     assert not metadata["AGE_AT_ADMISSION"]["unit"]
 
 
+def test_padded_and_blank_lab_units(plain_output):
+    """The fixture's subject 2 records its lab unit as " X " and subject 3 (item "Y") a blank one: the first
+    is `LAB//X//X` like every other subject's, and the second `LAB//Y//UNK`."""
+    events = pl.concat([pl.read_parquet(fp) for fp in (plain_output / "data").rglob("*.parquet")])
+    labs = events.filter(pl.col("code").str.starts_with("LAB//"))
+    counts = dict(labs.group_by("code").len().iter_rows())
+    assert counts == {"LAB//X//X": 9, "LAB//Y//UNK": 1}
+    assert not events.filter(pl.col("code").str.contains(r"(\s|//)$")).height
+    codes = pl.read_parquet(plain_output / "metadata/codes.parquet")
+    metadata = {r["code"]: r for r in codes.to_dicts()}
+    assert metadata["LAB//Y//UNK"]["unit"] is None
+    assert metadata["LAB//Y//UNK"]["description"] == (
+        "Laboratory test: Y; unit: UNK (CDSL lab_06.item_lab, lab_06.ud_result)"
+    )
+    assert metadata["LAB//X//X"]["description"] == (
+        "Laboratory test: X; unit: X (CDSL lab_06.item_lab, lab_06.ud_result)"
+    )
+
+
 def test_lab_results_without_a_unit_join_their_item():
     """A lab result without a unit is `LAB//<item>//UNK`, as in the other MEDS ETLs, so suMEDS's
     `sumeds_link_unit_siblings`, with this config's options and its default `unknown_unit_components` ([UNK]),
@@ -68,8 +87,9 @@ def test_lab_results_without_a_unit_join_their_item():
     """
     raw = yaml.safe_load(CONFIG_FP.read_text())
     lab = raw["lab_06"]["laboratory_result"]
-    assert lab["code"] == "f\"LAB//{$item_lab}//{$ud_result ?? 'UNK'}\""
-    assert "?? 'UNK'}" in lab["_metadata"]["_self"]["description"]
+    assert lab["code"] == 'f"LAB//{$item_lab}//{$_value_unit}"'
+    assert "{$_value_unit}" in lab["_metadata"]["_self"]["description"]
+    assert raw["lab_06"]["_table"]["cols"]["_value_unit"].endswith('?? "UNK"')
     (options,) = [
         stage["sumeds_link_unit_siblings"]
         for stage in raw["etl"]["post_stages"]

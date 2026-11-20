@@ -25,6 +25,13 @@ VOCABULARY_VALUES = {
 LATIN1_TABLES = {"atc7", "medication_05", "vital_signs_04"}
 ATC7_NAME = "LEVOTIROXINA SÓDICA"
 COMMERCIAL_NAME = "EUTIRÓX 100 µg"
+# Values that differ from `value_for` for one subject: a lab unit padded with whitespace (its code is
+# still `LAB//X//X`) and, for another item, a blank one (`LAB//Y//UNK`; a separate item, so that no
+# unit siblings arise).
+ROW_OVERRIDES = {
+    ("lab_06", 2): {"ud_result": " X "},
+    ("lab_06", 3): {"item_lab": "Y", "ud_result": "  "},
+}
 
 
 def value_for(column):
@@ -81,6 +88,7 @@ def raw_dir(tmp_path_factory) -> Path:
                     column: str(subject_id) if column.endswith("_id") else value_for(column)
                     for column in columns
                 }
+                | {c: v for c, v in ROW_OVERRIDES.get((prefix, subject_id), {}).items() if c in columns}
                 for subject_id in range(1, 11)
             )
     (raw / "atc7.csv").write_bytes(f"id_atc7,atc7_name\nH03AA01,{ATC7_NAME}\n".encode("latin-1"))
