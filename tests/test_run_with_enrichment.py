@@ -183,7 +183,7 @@ def test_vocabulary_codes_get_titles_and_parents(enriched_output: Path):
 
     # ICD-O-3 and ATC have no suMEDS pack: their codes are tagged, without a name.
     assert rows["NEOPLASM_ICDO3//8140/3"]["parent_codes"] == ["ICDO3//8140/3"]
-    for family in ("MEDICATION", "MEDICATION_END"):
+    for family in ("MEDICATION//START", "MEDICATION//END"):
         medication = rows[f"{family}//ATC5//H03AA//ATC7//H03AA01"]
         assert medication["parent_codes"] == ["ATC//H03AA01"]
         assert not medication["parent_names"]

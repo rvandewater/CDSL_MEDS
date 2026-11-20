@@ -49,7 +49,7 @@ EXPECTED_ONTOLOGY = {
     "NEOPLASM_ICDO3//8140/32": ("cdsl-icdo3-neoplasms", "8140/3"),
     **{
         f"{family}//ATC5//{atc5}//ATC7//{atc7}": (rule_id, value)
-        for family in ("MEDICATION", "MEDICATION_END")
+        for family in ("MEDICATION//START", "MEDICATION//END")
         for atc5, atc7, rule_id, value in [
             ("H03AA", "H03AA01", "cdsl-atc7-medications", "H03AA01"),
             ("N02BE", "UNKNOWN", "cdsl-atc5-medications", "N02BE"),

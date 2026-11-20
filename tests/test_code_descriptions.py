@@ -125,11 +125,11 @@ def test_apply_code_metadata_fills_only_missing_values(tmp_path):
                 "VITAL//HEART_RATE",
                 "DIAGNOSIS_ICD10//8140/3",
                 "DIAGNOSIS_ICD10//I10",
-                "MEDICATION//ATC5//X",
+                "MEDICATION//START//ATC5//X",
             ],
             "description": [None, "already extracted", None, "kept"],
             "parent_codes": [None, None, None, ["ATC/H03AA"]],
-            "code_template": [None, None, None, 'f"MEDICATION//ATC5//{$id_atc5}"'],
+            "code_template": [None, None, None, 'f"MEDICATION//START//ATC5//{$id_atc5}"'],
         }
     )
     dictionary = tmp_path / "icd10_codes_dict.txt"
@@ -146,7 +146,7 @@ def test_apply_code_metadata_fills_only_missing_values(tmp_path):
     assert rows["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
     # Parent codes are suMEDS's job: existing ones are kept, none are added.
     assert rows["DIAGNOSIS_ICD10//I10"]["parent_codes"] is None
-    assert rows["MEDICATION//ATC5//X"]["parent_codes"] == ["ATC/H03AA"]
+    assert rows["MEDICATION//START//ATC5//X"]["parent_codes"] == ["ATC/H03AA"]
     assert apply_code_metadata(fp, dictionary) == {"descriptions": 0}
     # Still valid MEDS code metadata as read from disk (string, not large_string).
     CodeMetadataSchema.validate(pq.read_table(fp))

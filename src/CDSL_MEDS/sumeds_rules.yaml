@@ -38,15 +38,15 @@ ontology:
     pattern: "^NEOPLASM_ICDO3//(?P<code>[0-9]{4}/[0-9])[0-9]?$"
     vocabulary: ICDO3
     validate: none
-  # MEDICATION[_END]//ATC5//{id_atc5}//ATC7//{id_atc7}: the ATC7 (level 5, chemical substance) code
+  # MEDICATION//START|END//ATC5//{id_atc5}//ATC7//{id_atc7}: the ATC7 (level 5, chemical substance) code
   # when it is well formed and lies under the row's ATC5 code ...
   - id: cdsl-atc7-medications
-    pattern: "^MEDICATION(?:_END)?//ATC5//(?P<atc5>[A-Z][0-9]{2}[A-Z]{2})//ATC7//(?P<code>(?P=atc5)[0-9]{2})$"
+    pattern: "^MEDICATION//(?:START|END)//ATC5//(?P<atc5>[A-Z][0-9]{2}[A-Z]{2})//ATC7//(?P<code>(?P=atc5)[0-9]{2})$"
     vocabulary: ATC
     validate: none
   # ... else the ATC5 (level 4, chemical subgroup) code. ATC is licensed and has no suMEDS pack.
   - id: cdsl-atc5-medications
-    pattern: "^MEDICATION(?:_END)?//ATC5//(?P<code>[A-Z][0-9]{2}[A-Z]{2})//ATC7//[^/]+$"
+    pattern: "^MEDICATION//(?:START|END)//ATC5//(?P<code>[A-Z][0-9]{2}[A-Z]{2})//ATC7//[^/]+$"
     vocabulary: ATC
     validate: none
 
