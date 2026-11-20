@@ -36,7 +36,9 @@ def test_etl_runs_on_a_minimal_valid_fixture(plain_output):
     assert undescribed == {"PROCEDURE_ICD10PCS//5A1955Z"}
     # The only parents are unit-free stems (`sumeds_link_unit_siblings`: `LAB//<item>` for
     # `LAB//<item>//<unit>`), in-dataset codes rather than vocabulary codes.
-    assert all(r["parent_codes"] == [c.rsplit("//", 1)[0]] for c, r in metadata.items() if r.get("parent_codes"))
+    assert all(
+        r["parent_codes"] == [c.rsplit("//", 1)[0]] for c, r in metadata.items() if r.get("parent_codes")
+    )
     assert metadata["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
     assert metadata["NEOPLASM_ICDO3//8140/3"]["description"].startswith("Neoplasm, ICD-O-3 morphology")
     assert metadata["MEDICATION//ATC5//H03AA//ATC7//H03AA01"]["description"] == ATC7_NAME
