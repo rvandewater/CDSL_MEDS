@@ -119,7 +119,9 @@ value is the `numeric_value`. The `diagnosis_er_02` and `diagnosis_hosp_03` even
 their own, are placed at the stay's hospital discharge (see [Data notes](#data-notes)).
 
 A missing discharge destination or ATC7 code becomes `UNKNOWN` in the code, and a missing lab unit `UNK`
-(`LAB//{item}//UNK`), as in the other MEDS ETLs. A row with a
+(`LAB//{item}//UNK`), as in the other MEDS ETLs. The lab unit in a code is stripped of surrounding
+whitespace; missing or blank is `UNK`. MEDS-Extract compares units the same way when it writes `unit`
+(stripped, blanks dropped), so ` mg` and `mg` give one code. A row with a
 missing time produces no event. Source row IDs (`medication_id`, `lab_id`, `vital_sign_id`) are kept as
 columns, so repeated identical measurements are not collapsed.
 
@@ -404,6 +406,12 @@ newest release first.
 - **A lab result without a unit is `LAB//{item}//UNK`** (was `LAB//{item}//UNKNOWN`), as in the other MEDS
     ETLs. Migrate by replacing `^(LAB//.+)//UNKNOWN$` with `\1//UNK`. The discharge destination and ATC7
     fallbacks are not units and stay `UNKNOWN`.
+- **The unit in a lab code is stripped of surrounding whitespace, and a blank one is `UNK`**
+    (`LAB//{item}//{unit}`). Before, `lab_06.ud_result` was copied as recorded: a padded unit (` mg`) gave
+    a code of its own, and a blank or empty one gave a code ending in whitespace or in `//`, with no
+    `unit`. No output change on the synthetic data; codes change only where a unit was padded or blank.
+    To migrate, strip the last part of an old lab code, and write `UNK` where it is then empty:
+    `^(LAB//.+?//)\s*(\S(?:.*\S)?)?\s*$` → `\1\2`.
 - **`codes.parquet` `unit` is one UCUM string per code** (MEDS-Extract 0.9 and suMEDS
     `sumeds_normalize_units`; it was a list of the units as recorded). The unit as recorded is in the new
     column `unit_source_value`.

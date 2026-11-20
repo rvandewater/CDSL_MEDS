@@ -575,8 +575,16 @@ medication_05:
           medication_05.id_atc5)" if (($id_atc7 ?? "") == "")
 
 lab_06:
+  _table:
+    cols:
+      # The unit as the code's last part: stripped of surrounding whitespace, and `UNK` where it is
+      # missing or blank. MEDS-Extract compares units the same way when it writes `unit` in
+      # `codes.parquet` (stripped, blanks dropped), so ` mg` and `mg` give one code. dftly 0.7 has no
+      # strip function, so the extract takes the text from the first to the last non-whitespace
+      # character (`(?s)` lets it span line breaks), which is null when there is none.
+      _value_unit: '(extract /(?s)\S(?:.*\S)?/ from $ud_result) ?? "UNK"'
   laboratory_result:
-    code: f"LAB//{$item_lab}//{$ud_result ?? 'UNK'}"
+    code: f"LAB//{$item_lab}//{$_value_unit}"
     time: f"{$lab_date[0:10]} {$time_lab}"::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $val_result::?float64
     text_value: $result_text ?? $val_result
@@ -585,11 +593,11 @@ lab_06:
     _metadata:
       _self:
         description: >-
-          f"Laboratory test: {$item_lab}; unit: {$ud_result ?? 'UNK'} (CDSL lab_06.item_lab,
+          f"Laboratory test: {$item_lab}; unit: {$_value_unit} (CDSL lab_06.item_lab,
           lab_06.ud_result)"
-        # The row's own unit (lab_06.ud_result), which is also the code's last part; none for an
-        # `UNK` code. The vital signs, age, urine output and medication dose have no unit in the
-        # release or its PhysioNet documentation, so they carry none.
+        # The row's own unit (lab_06.ud_result), which is also the code's last part (stripped by
+        # MEDS-Extract); none for an `UNK` code. The vital signs, age, urine output and medication
+        # dose have no unit in the release or its PhysioNet documentation, so they carry none.
         unit: $ud_result
 
 vital_signs_04:
