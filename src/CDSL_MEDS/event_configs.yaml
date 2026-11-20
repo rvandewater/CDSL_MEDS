@@ -33,9 +33,16 @@ etl:
     - image_id
   # Run after the canonical stages, in this order. Leave one out with `skip_stages=[NAME]`.
   post_stages:
+    # Links unit siblings to their stem code and fills units stated in descriptions
+    # (CDSL_MEDS.unit_metadata); MEDS-Extract (>= 0.9) itself writes `unit` as one String per code.
+    # First, so that suMEDS enriches the final set of codes.
+    - cdsl_unit_metadata
     # Describes DIAGNOSIS_ICD10// codes from the release's icd10_codes_dict.txt, and NEOPLASM_ICDO3//
     # codes with a template (CDSL_MEDS.code_descriptions).
     - cdsl_describe_slot_codes
+    # One UCUM spelling for every `unit` (suMEDS's shared table, e.g. `Cel`, `mm[Hg]`, `mg/dL`); the
+    # spelling as recorded stays in `unit_source_value`, and an unknown spelling is kept as it is.
+    - sumeds_normalize_units
     # Adds vocabulary titles and parent codes with suMEDS and records it in metadata/dataset.json. It
     # soft-fails (e.g. without internet); `suMEDS-enrich OUTPUT_DIR` finishes it later.
     - sumeds_enrich:
@@ -549,6 +556,10 @@ lab_06:
         description: >-
           f"Laboratory test: {$item_lab}; unit: {$ud_result ?? 'UNKNOWN'} (CDSL lab_06.item_lab,
           lab_06.ud_result)"
+        # The row's own unit (lab_06.ud_result), which is also the code's last part; none for an
+        # `UNKNOWN` code. The vital signs, age, urine output and medication dose have no unit in the
+        # release or its PhysioNet documentation, so they carry none.
+        unit: $ud_result
 
 vital_signs_04:
   systolic_blood_pressure:

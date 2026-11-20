@@ -1,6 +1,7 @@
 import json
 
 import polars as pl
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import yaml
@@ -39,6 +40,22 @@ def test_etl_runs_on_a_minimal_valid_fixture(plain_output):
     assert metadata["MEDICATION_END//ATC5//H03AA//ATC7//H03AA01"]["description"].startswith(
         f"End of medication: {ATC7_NAME}"
     )
+
+
+def test_lab_codes_carry_their_unit(plain_output):
+    """A lab code's unit (`lab_06.ud_result`, the fixture's "X") is also code metadata, one String per code;
+    the vital signs, whose unit the release does not document, carry none.
+
+    suMEDS's `sumeds_normalize_units` writes `unit` in UCUM, keeps the spelling as recorded in
+    `unit_source_value` and keeps a spelling it does not know, like "X", as it is.
+    """
+    codes = pq.read_table(plain_output / "metadata/codes.parquet")
+    assert codes.schema.field("unit").type == pa.large_string()  # as suMEDS writes it back
+    metadata = {r["code"]: r for r in codes.to_pylist()}
+    assert metadata["LAB//X//X"]["unit"] == "X"
+    assert metadata["LAB//X//X"]["unit_source_value"] == "X"
+    assert not metadata["VITAL//HEART_RATE"]["unit"]
+    assert not metadata["AGE_AT_ADMISSION"]["unit"]
 
 
 def test_latin1_sources_are_decoded(plain_output, raw_dir):
