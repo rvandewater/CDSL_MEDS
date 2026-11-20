@@ -12,7 +12,7 @@ CODECOV_TOKEN_PLACEHOLDER with the repo's Codecov badge token and zenodo.XXXXXXX
 [![license](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](https://github.com/rvandewater/CDSL_MEDS#license)
 [![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/rvandewater/CDSL_MEDS/pulls)
 [![contributors](https://img.shields.io/github/contributors/rvandewater/CDSL_MEDS.svg)](https://github.com/rvandewater/CDSL_MEDS/graphs/contributors)
-[![DOI](https://zenodo.org/badge/1355887072.svg)](https://doi.org/10.5281/zenodo.23676595)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23676595.svg)](https://doi.org/10.5281/zenodo.23676595)
 
 This pipeline extracts the
 [COVID Data for Shared Learning (CDSL) database v1.0.0](https://physionet.org/content/covid-data-shared-learning/1.0.0/)
@@ -382,7 +382,6 @@ license = {MIT},
 month = nov,
 title = {{CDSL MEDS ETL}},
 url = {https://github.com/rvandewater/CDSL_MEDS},
-version = {0.1.0},
 year = {2026}
 }
 ```
