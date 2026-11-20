@@ -4,7 +4,7 @@ Most CDSL codes are described in ``event_configs.yaml``: the ``atc7`` dictionary
 medications, ``_self`` templates for the codes built from one event's columns, and constant ``_self``
 blocks for the literal codes (``HOSPITAL_ADMISSION``, ``VITAL//HEART_RATE``, ...).
 
-The **slot-coded codes** (``DIAGNOSIS_ICD10//``, ``NEOPLASM_ICDO3//``) cannot be described there. They
+The **slot-coded codes** (``DIAGNOSIS//ICD//10CM//``, ``NEOPLASM//ICDO//3//``) cannot be described there. They
 come from one event per column of a wide table (``dia_ppal``, ``dia_02``, ...), so a code seen in two
 columns has two code templates, which the MEDS-Extract metadata stage rejects; those events cannot
 carry ``_metadata``. This module describes them in the finished ``metadata/codes.parquet``, as a
@@ -60,6 +60,11 @@ ICD10_DICTIONARY_FIELDS = (
 ICD10CM_CODE = re.compile(r"^[A-Z][0-9][0-9A-Z](\.[0-9A-Z]{1,4})?$")
 ICDO3_MORPHOLOGY_CODE = re.compile(r"^[0-9]{4}/[0-9]{1,2}$")
 
+# The slot-coded code families: vocabulary and edition are separate components, `ICD//10CM`
+# (CIE-10-ES, the Spanish edition of ICD-10-CM) and `ICDO//3`.
+DIAGNOSIS_PREFIX = "DIAGNOSIS//ICD//10CM//"
+NEOPLASM_PREFIX = "NEOPLASM//ICDO//3//"
+
 DIAGNOSIS_SOURCE = "CDSL diagnosis_er_02 / diagnosis_hosp_03 dia_* columns"
 NEOPLASM_SOURCE = "CDSL diagnosis_hosp_03 neo_* columns"
 
@@ -85,34 +90,33 @@ def slot_code_description(code: str, icd10_titles: Mapping[str, str]) -> str | N
     """Return the description of a slot-coded diagnosis or neoplasm code, else ``None``.
 
     ICD-10-CM codes are described only from the release's own dictionary. Codes it lacks, and all
-    ``PROCEDURE_ICD10PCS`` codes, are left undescribed, so that suMEDS can fill their official
+    ``PROCEDURE//ICD//10PCS`` codes, are left undescribed, so that suMEDS can fill their official
     titles from its versioned ICD-10-CM and ICD-10-PCS data (suMEDS fills only missing descriptions).
 
     Examples:
         >>> titles = {"I10": "Essential (primary) hypertension"}
-        >>> slot_code_description("DIAGNOSIS_ICD10//I10", titles)
+        >>> slot_code_description("DIAGNOSIS//ICD//10CM//I10", titles)
         'Essential (primary) hypertension'
-        >>> slot_code_description("DIAGNOSIS_ICD10//J18.9", titles) is None  # not in the dictionary
+        >>> slot_code_description("DIAGNOSIS//ICD//10CM//J18.9", titles) is None  # not in the dictionary
         True
-        >>> slot_code_description("DIAGNOSIS_ICD10//8140/3", titles).split(" (")[0]
+        >>> slot_code_description("DIAGNOSIS//ICD//10CM//8140/3", titles).split(" (")[0]
         'ICD-O-3 morphology code 8140/3 in an ICD-10 diagnosis column'
-        >>> slot_code_description("NEOPLASM_ICDO3//8140/32", titles)
+        >>> slot_code_description("NEOPLASM//ICDO//3//8140/32", titles)
         'Neoplasm, ICD-O-3 morphology code 8140/32 (CDSL diagnosis_hosp_03 neo_* columns)'
-        >>> slot_code_description("PROCEDURE_ICD10PCS//5A1955Z", titles) is None
+        >>> slot_code_description("PROCEDURE//ICD//10PCS//5A1955Z", titles) is None
         True
         >>> slot_code_description("LAB//Glucose//mg/dL", titles) is None
         True
     """
-    family, sep, value = code.partition("//")
-    if not sep:
-        return None
-    if family == "DIAGNOSIS_ICD10":
+    if code.startswith(DIAGNOSIS_PREFIX):
+        value = code.removeprefix(DIAGNOSIS_PREFIX)
         if ICD10CM_CODE.match(value):
             return icd10_titles.get(value.replace(".", ""))
         if ICDO3_MORPHOLOGY_CODE.match(value):
             return f"ICD-O-3 morphology code {value} in an ICD-10 diagnosis column ({DIAGNOSIS_SOURCE})"
         return f"Diagnosis code {value} ({DIAGNOSIS_SOURCE})"
-    if family == "NEOPLASM_ICDO3":
+    if code.startswith(NEOPLASM_PREFIX):
+        value = code.removeprefix(NEOPLASM_PREFIX)
         return f"Neoplasm, ICD-O-3 morphology code {value} ({NEOPLASM_SOURCE})"
     return None
 
