@@ -50,11 +50,11 @@
       "description": "Mechanical ventilation during the hospital stay (CDSL patient_01.mechvent is Yes); placed at hospital admission, not at the start of ventilation",
       "events": 10
     },
-    "MEDICATION//ATC5//H03AA//ATC7//H03AA01": {
+    "MEDICATION//START//ATC5//H03AA//ATC7//H03AA01": {
       "description": "LEVOTIROXINA SÓDICA",
       "events": 10
     },
-    "MEDICATION_END//ATC5//H03AA//ATC7//H03AA01": {
+    "MEDICATION//END//ATC5//H03AA//ATC7//H03AA01": {
       "description": "End of medication: LEVOTIROXINA SÓDICA (CDSL atc7.atc7_name)",
       "events": 10
     },

@@ -37,8 +37,8 @@ def test_etl_runs_on_a_minimal_valid_fixture(plain_output):
     assert not [c for c, r in metadata.items() if r.get("parent_codes")]
     assert metadata["DIAGNOSIS_ICD10//I10"]["description"] == "Essential (primary) hypertension"
     assert metadata["NEOPLASM_ICDO3//8140/3"]["description"].startswith("Neoplasm, ICD-O-3 morphology")
-    assert metadata["MEDICATION//ATC5//H03AA//ATC7//H03AA01"]["description"] == ATC7_NAME
-    assert metadata["MEDICATION_END//ATC5//H03AA//ATC7//H03AA01"]["description"].startswith(
+    assert metadata["MEDICATION//START//ATC5//H03AA//ATC7//H03AA01"]["description"] == ATC7_NAME
+    assert metadata["MEDICATION//END//ATC5//H03AA//ATC7//H03AA01"]["description"].startswith(
         f"End of medication: {ATC7_NAME}"
     )
 

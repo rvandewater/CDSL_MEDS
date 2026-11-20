@@ -540,8 +540,11 @@ diagnosis_hosp_03:
     time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
 medication_05:
+  # A course is two codes, `MEDICATION//START//ATC5//...` and `MEDICATION//END//ATC5//...`, the
+  # spelling the MEDS ETLs move to for the two ends of an interval (alignEHR#53). Both carry the same
+  # ATC codes, so swapping START for END pairs them.
   medication_start:
-    code: f"MEDICATION//ATC5//{$id_atc5}//ATC7//{$id_atc7 ?? 'UNKNOWN'}"
+    code: f"MEDICATION//START//ATC5//{$id_atc5}//ATC7//{$id_atc7 ?? 'UNKNOWN'}"
     time: $drug_start_date::?"%Y-%m-%d %H:%M:%S"
     numeric_value: $daily_avrg_dose::?float64
     text_value: $drug_comercial_name
@@ -557,7 +560,7 @@ medication_05:
           f"Medication without an ATC7 code in the source; ATC5 category {$id_atc5} (CDSL
           medication_05.id_atc5)" if (($id_atc7 ?? "") == "")
   medication_end:
-    code: f"MEDICATION_END//ATC5//{$id_atc5}//ATC7//{$id_atc7 ?? 'UNKNOWN'}"
+    code: f"MEDICATION//END//ATC5//{$id_atc5}//ATC7//{$id_atc7 ?? 'UNKNOWN'}"
     time: $drug_end_date::?"%Y-%m-%d %H:%M:%S"
     text_value: $drug_comercial_name
     medication_id: $medication_id

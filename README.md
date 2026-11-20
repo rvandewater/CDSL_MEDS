@@ -109,7 +109,7 @@ cp1252.
 | `diagnosis_er_02`           | `DIAGNOSIS_ICD10//{code}`, `PROCEDURE_ICD10PCS//{code}`                                                                                                           | One event per populated diagnosis (12) and procedure (5) slot.                            |
 | `diagnosis_hosp_03`         | `DIAGNOSIS_ICD10//{code}`, `PROCEDURE_ICD10PCS//{code}`, `NEOPLASM_ICDO3//{code}`                                                                                 | One event per populated diagnosis (19), procedure (20) and neoplasm (6) slot.             |
 | `vital_signs_04`            | `VITAL//{measurement}`                                                                                                                                            | Blood pressure, temperature, heart rate, oxygen saturation and glucose.                   |
-| `medication_05`             | `MEDICATION//ATC5//{atc5}//ATC7//{atc7}`, `MEDICATION_END//ATC5//{atc5}//ATC7//{atc7}`                                                                            | The daily average dose is the start event's `numeric_value`; the commercial name is text. |
+| `medication_05`             | `MEDICATION//START//ATC5//{atc5}//ATC7//{atc7}`, `MEDICATION//END//ATC5//{atc5}//ATC7//{atc7}`                                                                    | The daily average dose is the start event's `numeric_value`; the commercial name is text. |
 | `lab_06`                    | `LAB//{item}//{unit}`                                                                                                                                             | `numeric_value`, `text_value` and the reference range are kept.                           |
 | `CDSL-1.0.0-dicom-metadata` | `IMAGING//{modality}//{study description}//{body part}`                                                                                                           | Study and image IDs, view and patient position, and spatial resolution are kept.          |
 
@@ -139,7 +139,7 @@ translated.
 | `DIAGNOSIS_ICD10//{code}`                                                                                                                                     | `cdsl_describe_slot_codes` post-stage ([`code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) | the ICD-10-CM long title from the release's `icd10_codes_dict.txt`; ICD-O-3 morphology codes (`MMMM/B`) found in diagnosis columns get a template naming the code |
 | `PROCEDURE_ICD10PCS//{code}`                                                                                                                                  | none in the ETL                                                                                      | the CMS ICD-10-PCS title, added by suMEDS                                                                                                                         |
 | `NEOPLASM_ICDO3//{code}`                                                                                                                                      | `cdsl_describe_slot_codes` post-stage                                                                | a template naming the code (ICD-O-3 titles are licensed)                                                                                                          |
-| `MEDICATION//…`, `MEDICATION_END//…`                                                                                                                          | `atc7` join and `_self` block in `event_configs.yaml`                                                | the ATC7 name from the release's `atc7.csv` (prefixed "End of medication" for `MEDICATION_END`); for rows without an ATC7 code, a template naming the ATC5 code   |
+| `MEDICATION//START//…`, `MEDICATION//END//…`                                                                                                                  | `atc7` join and `_self` block in `event_configs.yaml`                                                | the ATC7 name from the release's `atc7.csv` (prefixed "End of medication" for `MEDICATION//END`); for rows without an ATC7 code, a template naming the ATC5 code  |
 | `HOSPITAL_DISCHARGE`, `SEX`, `INPATIENT_DIAGNOSIS`, `EMERGENCY_DEPARTMENT`, `EMERGENCY_DIAGNOSIS`, `LAB`, `IMAGING`                                           | `_self` templates in `event_configs.yaml`                                                            | the code's values with the CDSL columns they come from                                                                                                            |
 | literal codes: `HOSPITAL_ADMISSION`, `ICU_ADMISSION`, `ICU_DISCHARGE`, `AGE_AT_ADMISSION`, `EMERGENCY_DEPARTMENT_VISIT`, `MECHANICAL_VENTILATION`, `VITAL//…` | constant `_self` blocks in `event_configs.yaml`                                                      | the meaning of the source columns in the CDSL documentation, with the source of each in a `cdsl-docs:` comment                                                    |
 
@@ -272,7 +272,7 @@ ICD-10-CM and ICD-10-PCS codes are validated against suMEDS's versioned ontology
 - ICD-O-3 morphology codes (`NEOPLASM_ICDO3`, and `MMMM/B` codes in diagnosis columns): parent
     `ICDO3//{MMMM/B}`, the sixth (grade) digit dropped. ICD-O-3 is licensed, so suMEDS only tags these
     codes unless Athena validates them.
-- `MEDICATION` and `MEDICATION_END`: parent `ATC//{id_atc7}` when the ATC7 code is well formed and lies
+- `MEDICATION//START` and `MEDICATION//END`: parent `ATC//{id_atc7}` when the ATC7 code is well formed and lies
     under the row's ATC5 code, else `ATC//{id_atc5}`. ATC is licensed too: tagged only, or validated with
     its ancestors by Athena.
 - Same-dataset parents: a diagnosis or procedure code gets the nearest shorter code of the same family
@@ -365,10 +365,24 @@ baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so 
 
 ## Breaking changes
 
+### Unreleased (next release after 0.1.0)
+
+- **Medication courses are `MEDICATION//START//ATC5//…` and `MEDICATION//END//ATC5//…`**
+    ([alignEHR#53](https://github.com/rvandewater/alignEHR/issues/53)). The start was the unmarked
+    `MEDICATION//ATC5//{atc5}//ATC7//{atc7}` and the end `MEDICATION_END//ATC5//{atc5}//ATC7//{atc7}`. Both now
+    carry the token in the second part, the spelling all MEDS ETLs move to for the two ends of an interval, so a
+    start pairs with its end by swapping `START` for `END`. Events, times, values and code metadata (descriptions,
+    ATC parents) are otherwise unchanged, and the packaged suMEDS rules match the new codes.
+
+    | Old                                          | New                                             |
+    | -------------------------------------------- | ----------------------------------------------- |
+    | `MEDICATION//ATC5//{atc5}//ATC7//{atc7}`     | `MEDICATION//START//ATC5//{atc5}//ATC7//{atc7}` |
+    | `MEDICATION_END//ATC5//{atc5}//ATC7//{atc7}` | `MEDICATION//END//ATC5//{atc5}//ATC7//{atc7}`   |
+
+    To migrate, rewrite old codes with the regexes `^MEDICATION//ATC5//` → `MEDICATION//START//ATC5//` and
+    `^MEDICATION_END//ATC5//` → `MEDICATION//END//ATC5//`.
 Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
 newest release first.
-
-### Unreleased (next release after 0.1.0)
 
 - **Diagnosis, procedure and neoplasm events are timed at hospital discharge** (were `1970-01-01 00:00:00`).
     The `DIAGNOSIS_ICD10//…`, `PROCEDURE_ICD10PCS//…` and `NEOPLASM_ICDO3//…` events from
