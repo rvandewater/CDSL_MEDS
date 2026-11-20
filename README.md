@@ -117,7 +117,8 @@ cp1252.
 `HEART_RATE`, `OXYGEN_SATURATION`, `BLOOD_GLUCOSE` and, for the ED only, `URINE_OUTPUT`. The measured
 value is the `numeric_value`.
 
-A missing discharge destination, ATC7 code or lab unit becomes `UNKNOWN` in the code. A row with a
+A missing discharge destination or ATC7 code becomes `UNKNOWN` in the code, and a missing lab unit `UNK`
+(`LAB//{item}//UNK`), as in the other MEDS ETLs. A row with a
 missing time produces no event. Source row IDs (`medication_id`, `lab_id`, `vital_sign_id`) are kept as
 columns, so repeated identical measurements are not collapsed.
 
@@ -162,7 +163,7 @@ Sources:
     `CovidHM_V3-code/buildcovidhm/data_wrangling/V3_icd10_data_wrangling.py`).
 
 **Units.** Lab codes also carry their unit as **`unit`**, from the row's `lab_06.ud_result`, which is
-already the code's last part; an `UNKNOWN` code has none. The release and its PhysioNet documentation give
+already the code's last part; a `LAB//{item}//UNK` code has none. The release and its PhysioNet documentation give
 no unit for the vital signs, age, urine output or medication dose, so those codes carry none. `unit` is a
 String: the unit of the code's numeric values, one per code, written in [UCUM](https://ucum.org/) by
 suMEDS's `sumeds_normalize_units` post-stage (`mg/dl` would become `mg/dL`). The spelling as recorded
@@ -177,7 +178,9 @@ each gets the code without its unit, `LAB//{item}`, in its `parent_codes` (suMED
 vocabulary parents). This parent is an in-dataset code, not a vocabulary code. It gets a row of its own in `codes.parquet` (no events carry it): the siblings'
 description if they all share one (or, when they differ only in the `; unit: …` part, that description
 without it), the vocabulary parents they all share, and no unit. A lab code whose item has a single
-unit, and an `UNKNOWN`-unit code, gets no such parent. CDSL uses the stage's default options
+unit gets no such parent. A `LAB//{item}//UNK` code (no unit) joins its item's unit siblings and gets the
+stem too, without narrowing the stem's shared parents; on its own it gets none. CDSL uses the stage's
+default options (its default `unknown_unit_components`, `UNK`, covers these codes)
 plus `description_unit_pattern`, the `; unit: …` span of the lab descriptions this config writes. The
 post-stages run in this order: `sumeds_link_unit_siblings`, `sumeds_normalize_units`,
 `cdsl_describe_slot_codes`, `sumeds_enrich`.

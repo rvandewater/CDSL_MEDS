@@ -5,9 +5,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import yaml
-from conftest import ATC7_NAME, COMMERCIAL_NAME, ROOT
+from conftest import ATC7_NAME, COMMERCIAL_NAME, CONFIG_FP, ROOT
 from meds import CodeMetadataSchema, DatasetMetadataSchema
 from MEDS_extract.config import MessyConfig
+from sumeds.unit_siblings import link_unit_siblings
 
 
 def test_config_loads_and_excludes_images():
@@ -56,6 +57,46 @@ def test_lab_codes_carry_their_unit(plain_output):
     assert metadata["LAB//X//X"]["unit_source_value"] == "X"
     assert not metadata["VITAL//HEART_RATE"]["unit"]
     assert not metadata["AGE_AT_ADMISSION"]["unit"]
+
+
+def test_lab_results_without_a_unit_join_their_item():
+    """A lab result without a unit is `LAB//<item>//UNK`, as in the other MEDS ETLs, so suMEDS's
+    `sumeds_link_unit_siblings`, with this config's options and its default `unknown_unit_components` ([UNK]),
+    links it to its item's stem.
+
+    Other `//UNKNOWN` codes (no unit) are left as they are.
+    """
+    raw = yaml.safe_load(CONFIG_FP.read_text())
+    lab = raw["lab_06"]["laboratory_result"]
+    assert lab["code"] == "f\"LAB//{$item_lab}//{$ud_result ?? 'UNK'}\""
+    assert "?? 'UNK'}" in lab["_metadata"]["_self"]["description"]
+    (options,) = [
+        stage["sumeds_link_unit_siblings"]
+        for stage in raw["etl"]["post_stages"]
+        if isinstance(stage, dict) and "sumeds_link_unit_siblings" in stage
+    ]
+    assert "unknown_unit_components" not in options
+
+    def description(unit):
+        return f"Laboratory test: G; unit: {unit} (CDSL lab_06.item_lab, lab_06.ud_result)"
+
+    codes = pl.DataFrame(
+        {
+            "code": ["LAB//G//mg/dL", "LAB//G//UNK", "HOSPITAL_DISCHARGE//UNKNOWN"],
+            "description": [description("mg/dL"), description("UNK"), "Hospital discharge"],
+            "unit": ["mg/dL", None, None],
+            "parent_codes": [None, None, None],
+        },
+        schema_overrides={"parent_codes": pl.List(pl.String)},
+    )
+    out, counts = link_unit_siblings(codes, **options)
+    rows = {r["code"]: r for r in out.to_dicts()}
+    assert rows["LAB//G//mg/dL"]["parent_codes"] == ["LAB//G"]
+    assert rows["LAB//G//UNK"]["parent_codes"] == ["LAB//G"]
+    assert rows["LAB//G//UNK"]["unit"] is None
+    assert rows["LAB//G"]["description"] == "Laboratory test: G (CDSL lab_06.item_lab, lab_06.ud_result)"
+    assert rows["HOSPITAL_DISCHARGE//UNKNOWN"]["parent_codes"] is None
+    assert (counts["sibling_groups"], counts["sibling_codes"]) == (1, 2)
 
 
 def test_latin1_sources_are_decoded(plain_output, raw_dir):
