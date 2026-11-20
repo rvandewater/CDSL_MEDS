@@ -115,7 +115,8 @@ cp1252.
 
 `{measurement}` is one of `SYSTOLIC_BLOOD_PRESSURE`, `DIASTOLIC_BLOOD_PRESSURE`, `TEMPERATURE`,
 `HEART_RATE`, `OXYGEN_SATURATION`, `BLOOD_GLUCOSE` and, for the ED only, `URINE_OUTPUT`. The measured
-value is the `numeric_value`.
+value is the `numeric_value`. The `diagnosis_er_02` and `diagnosis_hosp_03` events, which have no time of
+their own, are placed at the stay's hospital discharge (see [Data notes](#data-notes)).
 
 A missing discharge destination or ATC7 code becomes `UNKNOWN` in the code, and a missing lab unit `UNK`
 (`LAB//{item}//UNK`), as in the other MEDS ETLs. A row with a
@@ -286,9 +287,15 @@ none of these parents or the ICD-10-PCS descriptions.
 
 - **Deidentified dates.** Dates are shifted but preserve chronology within a patient, and are emitted as
     supplied.
-- **Pseudotime.** `diagnosis_er_02` and `diagnosis_hosp_03` have no timestamps. Their diagnosis,
-    procedure and neoplasm events use the fixed time `1970-01-01 00:00:00` rather than a guessed
-    admission or discharge time.
+- **Coded diagnoses at discharge.** `diagnosis_er_02` and `diagnosis_hosp_03` have no timestamps.
+    Their diagnosis, procedure and neoplasm codes are the stay's coded diagnoses, which are final when
+    the stay ends, so their events are placed at the stay's hospital discharge
+    (`patient_01.discharge_date`, joined on `patient_id`), as MIMIC-IV and SICdb place coded diagnoses.
+    A prediction made during the stay therefore does not see them. Both the emergency-department and
+    the hospital table are placed there, since the release does not say when the ED codes were
+    finalised. A stay without a `discharge_date` has no discharge event, and its rows in these two
+    tables produce no event either; MEDS-Extract logs how many it drops per event
+    (`dropped N/M rows with null time`).
 - **One admission per subject.** `patient_id` is CDSL's admission identifier and becomes the MEDS
     `subject_id`.
 - **No units for vitals.** The release does not document units for the vital signs, so none are added
@@ -304,7 +311,8 @@ none of these parents or the ICD-10-PCS descriptions.
 tables written in Latin-1. `tests/test_cdsl_etl.py` checks that the config loads and excludes `IMAGES/`,
 and runs `meds-extract-run spec=CDSL skip_stages=[sumeds_enrich]` over the fixture (every code but the
 ICD-10-PCS procedures described, no parent codes, valid MEDS code metadata, Latin-1 text decoded, the
-`dataset.json` descriptors). `tests/test_runner_equivalence.py` checks that this build has the codes,
+`dataset.json` descriptors, the diagnosis, procedure and neoplasm codes at hospital discharge and no event
+before admission). `tests/test_runner_equivalence.py` checks that this build has the codes,
 descriptions and event counts that the removed `MEDS_extract-CDSL` runner built from the same fixture.
 `tests/test_run_with_enrichment.py` runs the full `meds-extract-run spec=CDSL`, offline against a tiny
 synthetic ontology pack, and checks that suMEDS adds titles and parents without changing the release's
@@ -354,6 +362,21 @@ credentialed release, so the [Summary stats workflow](.github/workflows/summary-
 when a pull request changes `src/` (the config, the post-stages or the suMEDS rules) without regenerating the
 baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so check it with
 `--compare`.
+
+## Breaking changes
+
+Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
+newest release first.
+
+### Unreleased (next release after 0.1.0)
+
+- **Diagnosis, procedure and neoplasm events are timed at hospital discharge** (were `1970-01-01 00:00:00`).
+    The `DIAGNOSIS_ICD10//…`, `PROCEDURE_ICD10PCS//…` and `NEOPLASM_ICDO3//…` events from
+    `diagnosis_er_02` and `diagnosis_hosp_03` move to the stay's `HOSPITAL_DISCHARGE` time
+    (`patient_01.discharge_date`). Their codes and counts are unchanged, and so is `codes.parquet`. A
+    filter on `time.year == 1970` no longer finds them; select them by code prefix instead. Rebuild any
+    predictions, task labels or cached cohorts made from an earlier build: the 1970 placement put these
+    codes in the history of every prediction made during the stay.
 
 ## Citation
 

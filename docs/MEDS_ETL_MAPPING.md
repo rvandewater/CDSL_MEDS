@@ -10,17 +10,22 @@ one admission per identifier, so it is also retained as `inpatient_stay_id` wher
 source has an admission-level event. Dates are deidentified but preserve within-patient
 chronology; direct source datetimes are emitted as supplied.
 
-The diagnosis, procedure, and neoplasm tables provide no event timestamp. Their events
-use the explicit shared pseudotime `1970-01-01 00:00:00`, rather than guessing admission
-or discharge time.
+The diagnosis, procedure, and neoplasm tables provide no event timestamp. Their codes are
+the stay's coded diagnoses, final when the stay ends, so their events are placed at the
+stay's hospital discharge: `patient_01.discharge_date`, joined on `patient_id` (an
+aggregated `max` join, so a repeated `patient_id` in `patient_01` cannot duplicate rows).
+This is how MIMIC-IV and SICdb time coded diagnoses, and it keeps them out of the history
+of predictions made during the stay. A stay without a discharge date produces no events
+from these tables; MEDS-Extract logs the number of dropped rows per event. Earlier
+versions used the fixed time `1970-01-01 00:00:00`.
 
 ## Tables
 
 | Source                          | MEDS events                                                                                                                | Time                                                          | Notes                                                                                                                                                                                                     |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `patient_01.csv`                | Hospital/ICU/ED visits, demographics, inpatient and ED diagnoses, mechanical ventilation, first/last ED vital measurements | Documented admission, discharge, ICU, ED, or measurement time | Missing times drop their event.                                                                                                                                                                           |
-| `diagnosis_er_02.csv`           | ICD-10 diagnosis slots and ICD-10-PCS procedure slots                                                                      | Pseudotime                                                    | Every populated wide slot is emitted.                                                                                                                                                                     |
-| `diagnosis_hosp_03.csv`         | ICD-10 diagnosis slots, ICD-10-PCS procedure slots, ICD-O-3 neoplasm slots                                                 | Pseudotime                                                    | Every populated wide slot is emitted; POA flags have no MEDS mapping.                                                                                                                                     |
+| `diagnosis_er_02.csv`           | ICD-10 diagnosis slots and ICD-10-PCS procedure slots                                                                      | `patient_01.discharge_date` (hospital discharge)              | Every populated wide slot is emitted; a stay without a discharge date drops its rows.                                                                                                                     |
+| `diagnosis_hosp_03.csv`         | ICD-10 diagnosis slots, ICD-10-PCS procedure slots, ICD-O-3 neoplasm slots                                                 | `patient_01.discharge_date` (hospital discharge)              | Every populated wide slot is emitted; a stay without a discharge date drops its rows; POA flags have no MEDS mapping.                                                                                     |
 | `vital_signs_04.csv`            | Systolic/diastolic pressure, temperature, heart rate, oxygen saturation, glucose                                           | `constants_ing_date` + `constants_ing_time`                   | `vital_sign_id` prevents loss of repeated identical measurements. Values, including zero, are retained because the release documentation does not define a missing-value sentinel. No units are asserted. |
 | `medication_05.csv`             | Medication start and end                                                                                                   | `drug_start_date`, `drug_end_date`                            | `medication_id` preserves source-row identity. Code preserves ATC5 and ATC7 identifiers; commercial name is text. `daily_avrg_dose` is numeric without an invented unit.                                  |
 | `atc7.csv`                      | Medication code metadata                                                                                                   | N/A                                                           | Supplies the ATC7 description of `MEDICATION` and `MEDICATION_END` codes.                                                                                                                                 |
