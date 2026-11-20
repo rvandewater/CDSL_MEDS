@@ -375,13 +375,14 @@ If you use this ETL, please cite the CDSL database:
 And this ETL:
 
 ```bibtex
-@software{Robin_van_de_Water_rvandewater_CDSL_MEDS_Zenodo_2026,
-author = {Robin van de Water},
-doi = {10.5281/zenodo.23676596},
-license = {["mit"]},
-month = oct,
-title = {{rvandewater/CDSL\_MEDS: Zenodo}},
-url = {https://github.com/rvandewater/CDSL_MEDS/,
+@software{van_de_Water_CDSL_MEDS_ETL_2026,
+author = {van de Water, Robin},
+doi = {10.5281/zenodo.23676595},
+license = {MIT},
+month = nov,
+title = {{CDSL MEDS ETL}},
+url = {https://github.com/rvandewater/CDSL_MEDS},
+version = {0.1.0},
 year = {2026}
 }
 ```

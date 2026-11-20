@@ -1,14 +1,15 @@
-abstract: No description provided.
+abstract: An ETL pipeline to extract the COVID Data for Shared Learning dataset into MEDS.
 authors:
 - affiliation: Columbia University
-  family-names: Robin van de Water
+  family-names: van de Water
+  given-names: Robin
 cff-version: 1.2.0
 date-released: '2026-11-11'
-doi: 10.5281/zenodo.23676596
+doi: 10.5281/zenodo.23676595
 license:
 - mit
 message: If you use this software, please cite it using the metadata from this file.
-repository-code: https://github.com/rvandewater/CDSL_MEDS/tree/0.0.3
-title: 'rvandewater/CDSL_MEDS: Zenodo'
+repository-code: https://github.com/rvandewater/CDSL_MEDS
+title: CDSL MEDS ETL
 type: software
-version: 0.0.4
+version: 0.1.0
