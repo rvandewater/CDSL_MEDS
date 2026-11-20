@@ -5,7 +5,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import yaml
-from conftest import ATC7_NAME, COMMERCIAL_NAME, CONFIG_FP, ROOT
+from conftest import ATC7_NAME, COMMERCIAL_NAME, CONFIG_FP, DISCHARGE_DATE, ROOT
 from meds import CodeMetadataSchema, DatasetMetadataSchema
 from MEDS_extract.config import MessyConfig
 from sumeds.unit_siblings import link_unit_siblings
@@ -97,6 +97,34 @@ def test_lab_results_without_a_unit_join_their_item():
     assert rows["LAB//G"]["description"] == "Laboratory test: G (CDSL lab_06.item_lab, lab_06.ud_result)"
     assert rows["HOSPITAL_DISCHARGE//UNKNOWN"]["parent_codes"] is None
     assert (counts["sibling_groups"], counts["sibling_codes"]) == (1, 2)
+
+
+def test_coded_diagnoses_and_procedures_fall_at_discharge(plain_output):
+    """`diagnosis_er_02` and `diagnosis_hosp_03` have no time; their codes are placed at the stay's hospital
+    discharge (`patient_01.discharge_date`), never before admission (they were 1970-01-01)."""
+    events = pl.concat([pl.read_parquet(fp) for fp in (plain_output / "data").rglob("*.parquet")])
+    admission = (
+        events.filter(pl.col("code") == "HOSPITAL_ADMISSION")
+        .group_by("subject_id")
+        .agg(pl.col("time").min().alias("admission"))
+    )
+    discharge = (
+        events.filter(pl.col("code").str.starts_with("HOSPITAL_DISCHARGE//"))
+        .group_by("subject_id")
+        .agg(pl.col("time").max().alias("discharge"))
+    )
+    events = events.join(admission, on="subject_id").join(discharge, on="subject_id")
+    assert events.height and events["time"].null_count() == 0
+
+    assert events.filter(pl.col("time") < pl.col("admission")).is_empty()
+
+    coded = events.filter(
+        pl.col("code").str.contains(r"^(DIAGNOSIS_ICD10|PROCEDURE_ICD10PCS|NEOPLASM_ICDO3)//")
+    )
+    families = set(coded["code"].str.split("//").list.first())
+    assert families == {"DIAGNOSIS_ICD10", "PROCEDURE_ICD10PCS", "NEOPLASM_ICDO3"}
+    assert (coded["time"] == coded["discharge"]).all()
+    assert set(coded["time"].dt.strftime("%Y-%m-%d %H:%M:%S")) == {DISCHARGE_DATE}
 
 
 def test_latin1_sources_are_decoded(plain_output, raw_dir):

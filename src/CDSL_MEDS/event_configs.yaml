@@ -1,6 +1,8 @@
 # COVID Data for Shared Learning (CDSL) (PhysioNet v1.0.0) to MEDS.
 # CDSL timestamps are deidentified but retain within-patient chronology. The diagnosis
-# and procedure tables contain no time, so their events use the shared pseudotime anchor.
+# and procedure tables (`diagnosis_er_02`, `diagnosis_hosp_03`) contain no time. Their codes are the
+# stay's coded diagnoses, procedures and neoplasms, so their events are placed at the stay's hospital
+# discharge (`patient_01.discharge_date`), as MIMIC-IV and SICdb time coded diagnoses.
 #
 # Code metadata: `_metadata` blocks describe every code that one kind of event emits, literal codes
 # included (constant `_self` blocks; the `cdsl-docs:` comments give the CDSL documentation each
@@ -266,254 +268,276 @@ patient_01:
     _metadata: *vital_blood_glucose
 
 diagnosis_er_02:
+  # No time of their own: the stay's coded diagnoses and procedures are final at hospital discharge,
+  # so they are placed there, not before the stay (where they would leak into predictions made
+  # during it). `patient_id` is the admission, so this is the one discharge of that stay; `max`
+  # keeps one row per diagnosis row should `patient_01` repeat an id. A stay without a
+  # discharge_date drops these rows, and MEDS-Extract logs how many per event.
+  _table:
+    joins:
+      patient_01:
+        key: patient_id
+        cols: { discharge_date: max }
+
   diagnosis_icd10_dia_ppal:
     code: f"DIAGNOSIS_ICD10//{$dia_ppal}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_02:
     code: f"DIAGNOSIS_ICD10//{$dia_02}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_03:
     code: f"DIAGNOSIS_ICD10//{$dia_03}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_04:
     code: f"DIAGNOSIS_ICD10//{$dia_04}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_05:
     code: f"DIAGNOSIS_ICD10//{$dia_05}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_06:
     code: f"DIAGNOSIS_ICD10//{$dia_06}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_07:
     code: f"DIAGNOSIS_ICD10//{$dia_07}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_08:
     code: f"DIAGNOSIS_ICD10//{$dia_08}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_09:
     code: f"DIAGNOSIS_ICD10//{$dia_09}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_10:
     code: f"DIAGNOSIS_ICD10//{$dia_10}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_11:
     code: f"DIAGNOSIS_ICD10//{$dia_11}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_12:
     code: f"DIAGNOSIS_ICD10//{$dia_12}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_01:
     code: f"PROCEDURE_ICD10PCS//{$proc_01}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_02:
     code: f"PROCEDURE_ICD10PCS//{$proc_02}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_03:
     code: f"PROCEDURE_ICD10PCS//{$proc_03}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_04:
     code: f"PROCEDURE_ICD10PCS//{$proc_04}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_05:
     code: f"PROCEDURE_ICD10PCS//{$proc_05}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
 diagnosis_hosp_03:
+  # No time of their own: the stay's coded diagnoses and procedures are final at hospital discharge,
+  # so they are placed there, not before the stay (where they would leak into predictions made
+  # during it). `patient_id` is the admission, so this is the one discharge of that stay; `max`
+  # keeps one row per diagnosis row should `patient_01` repeat an id. A stay without a
+  # discharge_date drops these rows, and MEDS-Extract logs how many per event.
+  _table:
+    joins:
+      patient_01:
+        key: patient_id
+        cols: { discharge_date: max }
+
   diagnosis_icd10_dia_ppal:
     code: f"DIAGNOSIS_ICD10//{$dia_ppal}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_02:
     code: f"DIAGNOSIS_ICD10//{$dia_02}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_03:
     code: f"DIAGNOSIS_ICD10//{$dia_03}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_04:
     code: f"DIAGNOSIS_ICD10//{$dia_04}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_05:
     code: f"DIAGNOSIS_ICD10//{$dia_05}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_06:
     code: f"DIAGNOSIS_ICD10//{$dia_06}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_07:
     code: f"DIAGNOSIS_ICD10//{$dia_07}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_08:
     code: f"DIAGNOSIS_ICD10//{$dia_08}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_09:
     code: f"DIAGNOSIS_ICD10//{$dia_09}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_10:
     code: f"DIAGNOSIS_ICD10//{$dia_10}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_11:
     code: f"DIAGNOSIS_ICD10//{$dia_11}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_12:
     code: f"DIAGNOSIS_ICD10//{$dia_12}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_13:
     code: f"DIAGNOSIS_ICD10//{$dia_13}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_14:
     code: f"DIAGNOSIS_ICD10//{$dia_14}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_15:
     code: f"DIAGNOSIS_ICD10//{$dia_15}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_16:
     code: f"DIAGNOSIS_ICD10//{$dia_16}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_17:
     code: f"DIAGNOSIS_ICD10//{$dia_17}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_18:
     code: f"DIAGNOSIS_ICD10//{$dia_18}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   diagnosis_icd10_dia_19:
     code: f"DIAGNOSIS_ICD10//{$dia_19}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_01:
     code: f"PROCEDURE_ICD10PCS//{$proc_01}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_02:
     code: f"PROCEDURE_ICD10PCS//{$proc_02}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_03:
     code: f"PROCEDURE_ICD10PCS//{$proc_03}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_04:
     code: f"PROCEDURE_ICD10PCS//{$proc_04}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_05:
     code: f"PROCEDURE_ICD10PCS//{$proc_05}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_06:
     code: f"PROCEDURE_ICD10PCS//{$proc_06}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_07:
     code: f"PROCEDURE_ICD10PCS//{$proc_07}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_08:
     code: f"PROCEDURE_ICD10PCS//{$proc_08}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_09:
     code: f"PROCEDURE_ICD10PCS//{$proc_09}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_10:
     code: f"PROCEDURE_ICD10PCS//{$proc_10}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_11:
     code: f"PROCEDURE_ICD10PCS//{$proc_11}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_12:
     code: f"PROCEDURE_ICD10PCS//{$proc_12}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_13:
     code: f"PROCEDURE_ICD10PCS//{$proc_13}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_14:
     code: f"PROCEDURE_ICD10PCS//{$proc_14}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_15:
     code: f"PROCEDURE_ICD10PCS//{$proc_15}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_16:
     code: f"PROCEDURE_ICD10PCS//{$proc_16}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_17:
     code: f"PROCEDURE_ICD10PCS//{$proc_17}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_18:
     code: f"PROCEDURE_ICD10PCS//{$proc_18}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_19:
     code: f"PROCEDURE_ICD10PCS//{$proc_19}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   procedure_icd10pcs_proc_20:
     code: f"PROCEDURE_ICD10PCS//{$proc_20}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_01:
     code: f"NEOPLASM_ICDO3//{$neo_01}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_02:
     code: f"NEOPLASM_ICDO3//{$neo_02}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_03:
     code: f"NEOPLASM_ICDO3//{$neo_03}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_04:
     code: f"NEOPLASM_ICDO3//{$neo_04}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_05:
     code: f"NEOPLASM_ICDO3//{$neo_05}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
   neoplasm_icdo3_neo_06:
     code: f"NEOPLASM_ICDO3//{$neo_06}"
-    time: 1970-01-01 @ 00:00
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
 
 medication_05:
   # A course is two codes, `MEDICATION//START//ATC5//...` and `MEDICATION//END//ATC5//...`, the
