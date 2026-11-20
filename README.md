@@ -46,9 +46,9 @@ This one command gives the complete build. It will:
     declared in [`src/CDSL_MEDS/event_configs.yaml`](src/CDSL_MEDS/event_configs.yaml). The downloaded
     files are not modified.
 3. Run the four post-stages the config declares: suMEDS's `sumeds_link_unit_siblings` links codes
-    that differ only in their unit (see [Code metadata](#code-metadata)), `cdsl_describe_slot_codes` describes the
-    slot-coded diagnosis and neoplasm codes from the release's own dictionary, suMEDS's
-    `sumeds_normalize_units` writes `unit` in UCUM, then `sumeds_enrich` adds
+    that differ only in their unit (see [Code metadata](#code-metadata)), suMEDS's
+    `sumeds_normalize_units` writes `unit` in UCUM, `cdsl_describe_slot_codes` describes the
+    slot-coded diagnosis and neoplasm codes from the release's own dictionary, then `sumeds_enrich` adds
     official vocabulary titles and parent codes with suMEDS (see
     [Enriching code metadata with suMEDS](#enriching-code-metadata-with-sumeds)).
 
@@ -179,8 +179,8 @@ description if they all share one (or, when they differ only in the `; unit: …
 without it), the vocabulary parents they all share, and no unit. A lab code whose item has a single
 unit, and an `UNKNOWN`-unit code, gets no such parent. CDSL uses the stage's default options
 plus `description_unit_pattern`, the `; unit: …` span of the lab descriptions this config writes. The
-post-stages run in this order: `sumeds_link_unit_siblings`, `cdsl_describe_slot_codes`,
-`sumeds_normalize_units`, `sumeds_enrich`.
+post-stages run in this order: `sumeds_link_unit_siblings`, `sumeds_normalize_units`,
+`cdsl_describe_slot_codes`, `sumeds_enrich`.
 
 **Units in descriptions.** The stage can also fill a missing `unit` from a unit the code's
 description states (never overriding a unit from the data). CDSL has no dataset dictionary that states
