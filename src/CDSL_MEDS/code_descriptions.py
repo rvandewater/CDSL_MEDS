@@ -8,10 +8,12 @@ The **slot-coded codes** (``DIAGNOSIS_ICD10//``, ``NEOPLASM_ICDO3//``) cannot be
 come from one event per column of a wide table (``dia_ppal``, ``dia_02``, ...), so a code seen in two
 columns has two code templates, which the MEDS-Extract metadata stage rejects; those events cannot
 carry ``_metadata``. This module describes them in the finished ``metadata/codes.parquet``, as a
-MEDS-Extract post-stage that the spec runs before ``sumeds_enrich``::
+MEDS-Extract post-stage that the spec runs after suMEDS's unit stages and before ``sumeds_enrich``::
 
     etl:
       post_stages:
+        - sumeds_link_unit_siblings: {description_unit_pattern: ...}
+        - sumeds_normalize_units
         - cdsl_describe_slot_codes
         - sumeds_enrich: {rules: CDSL}
 

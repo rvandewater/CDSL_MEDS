@@ -12,7 +12,7 @@ CODECOV_TOKEN_PLACEHOLDER with the repo's Codecov badge token and zenodo.XXXXXXX
 [![license](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](https://github.com/rvandewater/CDSL_MEDS#license)
 [![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/rvandewater/CDSL_MEDS/pulls)
 [![contributors](https://img.shields.io/github/contributors/rvandewater/CDSL_MEDS.svg)](https://github.com/rvandewater/CDSL_MEDS/graphs/contributors)
-[![DOI](https://zenodo.org/badge/1355887072.svg)](https://doi.org/10.5281/zenodo.23676595)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23676595.svg)](https://doi.org/10.5281/zenodo.23676595)
 
 This pipeline extracts the
 [COVID Data for Shared Learning (CDSL) database v1.0.0](https://physionet.org/content/covid-data-shared-learning/1.0.0/)
@@ -377,6 +377,14 @@ newest release first.
     filter on `time.year == 1970` no longer finds them; select them by code prefix instead. Rebuild any
     predictions, task labels or cached cohorts made from an earlier build: the 1970 placement put these
     codes in the history of every prediction made during the stay.
+- **A lab result without a unit is `LAB//{item}//UNK`** (was `LAB//{item}//UNKNOWN`), as in the other MEDS
+    ETLs. Migrate by replacing `^(LAB//.+)//UNKNOWN$` with `\1//UNK`. The discharge destination and ATC7
+    fallbacks are not units and stay `UNKNOWN`.
+- **`codes.parquet` `unit` is one UCUM string per code** (MEDS-Extract 0.9 and suMEDS
+    `sumeds_normalize_units`; it was a list of the units as recorded). The unit as recorded is in the new
+    column `unit_source_value`.
+- **New rows in `codes.parquet` without events:** codes that differ only in their unit component get the code
+    without the unit (`LAB//{item}`) as a parent, which has a row of its own.
 
 ## Citation
 
@@ -398,13 +406,13 @@ If you use this ETL, please cite the CDSL database:
 And this ETL:
 
 ```bibtex
-@software{Robin_van_de_Water_rvandewater_CDSL_MEDS_Zenodo_2026,
-author = {Robin van de Water},
-doi = {10.5281/zenodo.23676596},
-license = {["mit"]},
-month = oct,
-title = {{rvandewater/CDSL\_MEDS: Zenodo}},
-url = {https://github.com/rvandewater/CDSL_MEDS/,
+@software{van_de_Water_CDSL_MEDS_ETL_2026,
+author = {van de Water, Robin},
+doi = {10.5281/zenodo.23676595},
+license = {MIT},
+month = nov,
+title = {{CDSL MEDS ETL}},
+url = {https://github.com/rvandewater/CDSL_MEDS},
 year = {2026}
 }
 ```
