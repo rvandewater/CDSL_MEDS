@@ -41,6 +41,10 @@ etl:
     # without that span. First, so that suMEDS enriches the final set of codes.
     - sumeds_link_unit_siblings:
         description_unit_pattern: '; unit: (?P<unit>.+?)(?= \(CDSL lab_06\.item_lab, lab_06\.ud_result\)$)'
+        # CDSL writes a lab result without a unit as `LAB//<item>//UNKNOWN` (not `UNK`); such a code
+        # joins its item's unit variants. Other `//UNKNOWN` codes (discharge destination, ATC7) have
+        # no sibling with a real unit and are never linked.
+        unknown_unit_components: [UNKNOWN]
     # One UCUM spelling for every `unit` (suMEDS's shared table, e.g. `Cel`, `mm[Hg]`, `mg/dL`); the
     # spelling as recorded stays in `unit_source_value`, and an unknown spelling is kept as it is.
     - sumeds_normalize_units
