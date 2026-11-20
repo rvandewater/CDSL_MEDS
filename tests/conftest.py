@@ -25,6 +25,10 @@ VOCABULARY_VALUES = {
 LATIN1_TABLES = {"atc7", "medication_05", "vital_signs_04"}
 ATC7_NAME = "LEVOTIROXINA SÓDICA"
 COMMERCIAL_NAME = "EUTIRÓX 100 µg"
+# Every other date is the admission day; discharge is a week later, so an event placed at discharge
+# is told apart from one placed at admission.
+ADMISSION_DATE = "2020-01-02 00:00:00"
+DISCHARGE_DATE = "2020-01-09 00:00:00"
 
 
 def value_for(column):
@@ -38,8 +42,10 @@ def value_for(column):
         return "12:00"
     if "time" in column.lower():
         return "12:00:00"
+    if column == "discharge_date":
+        return DISCHARGE_DATE
     if column == "admission_d_inpat" or "date" in column.lower():
-        return "2020-01-02 00:00:00"
+        return ADMISSION_DATE
     if column in {"age", "daily_avrg_dose"} or column.endswith(("_ing", "_emerg")):
         return "1"
     if column == "mechvent":
