@@ -17,6 +17,7 @@ from sumeds.testing.contracts import UnitComponentContract
 class TestUnitComponents(UnitComponentContract):
     spec = "CDSL"
     expected_unit_events = ("lab_06/laboratory_result",)
+    require_unit_in_code = True
 
 
 def test_lab_description_names_the_stripped_unit():
