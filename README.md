@@ -384,7 +384,9 @@ baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so 
 Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
 newest release first.
 
-### Unreleased (next release after 0.1.0)
+### 0.2.0 (2026-11-20)
+
+- Rebuilt on the full release; `tests/regression/full_summary_stats.json` regenerated.
 
 - **ICD codes name the vocabulary and its edition apart.** Every MEDS ETL of this family now writes
     `<FAMILY>//<VOCABULARY>//<EDITION>//<code>`. `DIAGNOSIS_ICD10//{code}` is now `DIAGNOSIS//ICD//10CM//{code}`,
