@@ -32,6 +32,7 @@ def test_same_codes_descriptions_and_event_counts(plain_output: Path, golden: di
         for code, description in codes.select("code", "description").iter_rows()
         if code in counts
     }
+    codes_by_name = dict(codes.select("code", "description").iter_rows())
     # The fixture has since gained `ROW_OVERRIDES` (conftest.py): subject 2's padded lab unit " X "
     # still gives `LAB//X//X`, while subject 3's lab moved to item "Y" with a blank unit, `LAB//Y//UNK`.
     expected = json.loads(json.dumps(golden["codes"]))
@@ -40,11 +41,19 @@ def test_same_codes_descriptions_and_event_counts(plain_output: Path, golden: di
         "description": "Laboratory test: Y; unit: UNK (CDSL lab_06.item_lab, lab_06.ud_result)",
         "events": 1,
     }
+    # Subject 1's stay ends in death: its discharge is `HOSPITAL_DISCHARGE//Death`, and the death is
+    # also `MEDS_DEATH` at that discharge (which the runner predates).
+    expected["HOSPITAL_DISCHARGE//X"]["events"] -= 1
+    expected["HOSPITAL_DISCHARGE//Death"] = {
+        "description": "Hospital discharge; discharge destination: Death (CDSL patient_01.destin_discharge)",
+        "events": 1,
+    }
+    expected["MEDS_DEATH"] = {"description": codes_by_name["MEDS_DEATH"], "events": 1}
     # The only codes without events are unit-free stems (suMEDS's `sumeds_link_unit_siblings`, which
     # the runner predates): each is another code without its unit component.
     stems = set(codes["code"]) - set(counts)
     assert all(any(c.startswith(f"{stem}//") for c in counts) for stem in stems), stems
-    assert events.height == golden["events"]
+    assert events.height == golden["events"] + 1  # MEDS_DEATH
     assert built == expected
 
 

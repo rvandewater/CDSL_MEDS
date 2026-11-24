@@ -31,8 +31,11 @@ ADMISSION_DATE = "2020-01-02 00:00:00"
 DISCHARGE_DATE = "2020-01-09 00:00:00"
 # Values that differ from `value_for` for one subject: a lab unit padded with whitespace (its code is
 # still `LAB//X//X`) and, for another item, a blank one (`LAB//Y//UNK`; a separate item, so that no
-# unit siblings arise).
+# unit siblings arise), and one stay that ends in death (discharge destination `Death`, so
+# `HOSPITAL_DISCHARGE//Death` and `MEDS_DEATH`).
+DEATH_SUBJECT = 1
 ROW_OVERRIDES = {
+    ("patient_01", DEATH_SUBJECT): {"destin_discharge": "Death"},
     ("lab_06", 2): {"ud_result": " X "},
     ("lab_06", 3): {"item_lab": "Y", "ud_result": "  "},
 }

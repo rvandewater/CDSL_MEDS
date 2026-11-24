@@ -19,6 +19,7 @@ SLOT_FAMILIES = ("DIAGNOSIS//ICD//10CM//", "PROCEDURE//ICD//10PCS//", "NEOPLASM/
 # The literal codes of the config, each described by a constant `_self` block.
 LITERAL_CODES = {
     "HOSPITAL_ADMISSION",
+    "MEDS_DEATH",
     "ICU_ADMISSION",
     "ICU_DISCHARGE",
     "AGE_AT_ADMISSION",
