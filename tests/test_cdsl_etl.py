@@ -5,8 +5,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import yaml
-from conftest import ATC7_NAME, COMMERCIAL_NAME, CONFIG_FP, DISCHARGE_DATE, ROOT
-from meds import CodeMetadataSchema, DatasetMetadataSchema
+from conftest import ATC7_NAME, COMMERCIAL_NAME, CONFIG_FP, DEATH_SUBJECT, DISCHARGE_DATE, ROOT
+from meds import CodeMetadataSchema, DatasetMetadataSchema, death_code
 from MEDS_extract.config import MessyConfig
 from sumeds.unit_siblings import link_unit_siblings
 
@@ -177,3 +177,26 @@ def test_dataset_json_describes_the_release_and_the_extra_columns(plain_output):
     core = {"subject_id", "time", "code", "numeric_value", "text_value"}
     listed = set(metadata["raw_source_id_columns"]) | set(metadata["other_extension_columns"])
     assert listed == set(events.columns) - core
+
+
+def test_death_discharge_is_meds_death(plain_output):
+    """A stay whose discharge destination is `Death` (the fixture's subject 1) keeps its
+    `HOSPITAL_DISCHARGE//Death` event and also gets one `MEDS_DEATH` (`meds.death_code`) at the same time; no
+    other subject gets one."""
+    events = pl.concat([pl.read_parquet(fp) for fp in (plain_output / "data").rglob("*.parquet")])
+    death = events.filter(pl.col("code") == death_code)
+    discharge = events.filter(pl.col("code") == "HOSPITAL_DISCHARGE//Death")
+    assert death.height == 1 and discharge.height == 1
+    assert death["subject_id"].to_list() == discharge["subject_id"].to_list() == [DEATH_SUBJECT]
+    assert death["time"].to_list() == discharge["time"].to_list()
+    assert death["time"].dt.strftime("%Y-%m-%d %H:%M:%S").to_list() == [DISCHARGE_DATE]
+    assert death.select(pl.col("numeric_value", "text_value").is_null().all()).row(0) == (True, True)
+    # Every other subject is discharged elsewhere and has no death.
+    others = events.filter(pl.col("subject_id") != DEATH_SUBJECT)
+    assert others.filter(pl.col("code").str.starts_with("HOSPITAL_DISCHARGE//")).height == 9
+    assert others.filter(pl.col("code") == death_code).is_empty()
+
+    metadata = {r["code"]: r for r in pl.read_parquet(plain_output / "metadata/codes.parquet").to_dicts()}
+    description = metadata[death_code]["description"]
+    assert description.startswith("Death (MEDS standard code): in-hospital death")
+    assert "patient_01.destin_discharge" in description and "no follow-up after discharge" in description

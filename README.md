@@ -113,6 +113,7 @@ cp1252.
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `patient_01`                | `HOSPITAL_ADMISSION`, `HOSPITAL_DISCHARGE//{destination}`, `ICU_ADMISSION`, `ICU_DISCHARGE`, `AGE_AT_ADMISSION`, `SEX//{sex}`, `INPATIENT_DIAGNOSIS//{diagnosis}` | Age is the `numeric_value`. Sex and inpatient diagnosis are placed at hospital admission. |
 |                             | `EMERGENCY_DEPARTMENT_VISIT`, `EMERGENCY_DEPARTMENT//{department}`, `EMERGENCY_DIAGNOSIS//{diagnosis}`                                                            | Placed at the ED admission time.                                                          |
+|                             | `MEDS_DEATH`                                                                                                                                                      | At hospital discharge when the destination is `Death` (see [Data notes](#data-notes)).    |
 |                             | `MECHANICAL_VENTILATION`                                                                                                                                          | Emitted at hospital admission when `mechvent` is `Yes`.                                   |
 |                             | `VITAL//{measurement}`                                                                                                                                            | The first and last ED vital signs, at their recorded times.                               |
 | `diagnosis_er_02`           | `DIAGNOSIS//ICD//10CM//{code}`, `PROCEDURE//ICD//10PCS//{code}`                                                                                                   | One event per populated diagnosis (12) and procedure (5) slot.                            |
@@ -145,14 +146,14 @@ the ICD-10-PCS procedure codes, come from suMEDS (see
 column each value comes from. Spanish source values, such as the ATC names, are kept as they are, not
 translated.
 
-| Code family                                                                                                                                                   | Route                                                                                                | Description                                                                                                                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DIAGNOSIS//ICD//10CM//{code}`                                                                                                                                | `cdsl_describe_slot_codes` post-stage ([`code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) | the ICD-10-CM long title from the release's `icd10_codes_dict.txt`; ICD-O-3 morphology codes (`MMMM/B`) found in diagnosis columns get a template naming the code |
-| `PROCEDURE//ICD//10PCS//{code}`                                                                                                                               | none in the ETL                                                                                      | the CMS ICD-10-PCS title, added by suMEDS                                                                                                                         |
-| `NEOPLASM//ICDO//3//{code}`                                                                                                                                   | `cdsl_describe_slot_codes` post-stage                                                                | a template naming the code (ICD-O-3 titles are licensed)                                                                                                          |
-| `MEDICATION//START//…`, `MEDICATION//END//…`                                                                                                                  | `atc7` join and `_self` block in `event_configs.yaml`                                                | the ATC7 name from the release's `atc7.csv` (prefixed "End of medication" for `MEDICATION//END`); for rows without an ATC7 code, a template naming the ATC5 code  |
-| `HOSPITAL_DISCHARGE`, `SEX`, `INPATIENT_DIAGNOSIS`, `EMERGENCY_DEPARTMENT`, `EMERGENCY_DIAGNOSIS`, `LAB`, `IMAGING`                                           | `_self` templates in `event_configs.yaml`                                                            | the code's values with the CDSL columns they come from                                                                                                            |
-| literal codes: `HOSPITAL_ADMISSION`, `ICU_ADMISSION`, `ICU_DISCHARGE`, `AGE_AT_ADMISSION`, `EMERGENCY_DEPARTMENT_VISIT`, `MECHANICAL_VENTILATION`, `VITAL//…` | constant `_self` blocks in `event_configs.yaml`                                                      | the meaning of the source columns in the CDSL documentation, with the source of each in a `cdsl-docs:` comment                                                    |
+| Code family                                                                                                                                                                 | Route                                                                                                | Description                                                                                                                                                       |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DIAGNOSIS//ICD//10CM//{code}`                                                                                                                                              | `cdsl_describe_slot_codes` post-stage ([`code_descriptions.py`](src/CDSL_MEDS/code_descriptions.py)) | the ICD-10-CM long title from the release's `icd10_codes_dict.txt`; ICD-O-3 morphology codes (`MMMM/B`) found in diagnosis columns get a template naming the code |
+| `PROCEDURE//ICD//10PCS//{code}`                                                                                                                                             | none in the ETL                                                                                      | the CMS ICD-10-PCS title, added by suMEDS                                                                                                                         |
+| `NEOPLASM//ICDO//3//{code}`                                                                                                                                                 | `cdsl_describe_slot_codes` post-stage                                                                | a template naming the code (ICD-O-3 titles are licensed)                                                                                                          |
+| `MEDICATION//START//…`, `MEDICATION//END//…`                                                                                                                                | `atc7` join and `_self` block in `event_configs.yaml`                                                | the ATC7 name from the release's `atc7.csv` (prefixed "End of medication" for `MEDICATION//END`); for rows without an ATC7 code, a template naming the ATC5 code  |
+| `HOSPITAL_DISCHARGE`, `SEX`, `INPATIENT_DIAGNOSIS`, `EMERGENCY_DEPARTMENT`, `EMERGENCY_DIAGNOSIS`, `LAB`, `IMAGING`                                                         | `_self` templates in `event_configs.yaml`                                                            | the code's values with the CDSL columns they come from                                                                                                            |
+| literal codes: `HOSPITAL_ADMISSION`, `MEDS_DEATH`, `ICU_ADMISSION`, `ICU_DISCHARGE`, `AGE_AT_ADMISSION`, `EMERGENCY_DEPARTMENT_VISIT`, `MECHANICAL_VENTILATION`, `VITAL//…` | constant `_self` blocks in `event_configs.yaml`                                                      | the meaning of the source columns in the CDSL documentation, with the source of each in a `cdsl-docs:` comment                                                    |
 
 A literal code has no components to join a dictionary on, so its description is a constant `_self`
 block on the events that emit it (MEDS-Extract 0.8.1 or later); the events that emit the same vital sign
@@ -314,6 +315,16 @@ none of these parents or the ICD-10-PCS descriptions.
     (`dropped N/M rows with null time`).
 - **One admission per subject.** `patient_id` is CDSL's admission identifier and becomes the MEDS
     `subject_id`.
+- **Death.** CDSL records death only as the hospital discharge destination `Death`
+    (`patient_01.destin_discharge`; [release page](https://physionet.org/content/covid-data-shared-learning/1.0.0/)).
+    Such a discharge keeps its `HOSPITAL_DISCHARGE//Death` event and also gets the MEDS standard death code
+    `MEDS_DEATH` ([`meds.death_code`](https://github.com/Medical-Event-Data-Standard/meds)) at the same time
+    (`patient_01.discharge_date`), as the MIMIC-IV ETL writes `MEDS_DEATH` next to its discharge event. The release
+    follows no patient after discharge, so `MEDS_DEATH` is in-hospital death only, and a subject without it has no
+    recorded in-hospital death rather than known survival. A subject is one admission and `patient_01` has one row
+    per `patient_id` (4,479 rows and ids in CDSL 1.0.0), so a subject has at most one `MEDS_DEATH`; should a later
+    release repeat an id with death discharges at different times, each would give one. A death discharge without a
+    `discharge_date` gives neither event (none in CDSL 1.0.0).
 - **No units for vitals.** The release does not document units for the vital signs, so none are added
     to the codes. Zero values are kept because the release defines no missing-value sentinel.
 - **Unmapped columns.** The present-on-admission flags in `diagnosis_hosp_03` have no MEDS mapping and
@@ -328,7 +339,8 @@ tables written in Latin-1. `tests/test_cdsl_etl.py` checks that the config loads
 and runs `meds-extract-run spec=CDSL skip_stages=[sumeds_enrich]` over the fixture (every code but the
 ICD-10-PCS procedures described, no parent codes, valid MEDS code metadata, Latin-1 text decoded, the
 `dataset.json` descriptors, the diagnosis, procedure and neoplasm codes at hospital discharge and no event
-before admission). `tests/test_runner_equivalence.py` checks that this build has the codes,
+before admission, and one `MEDS_DEATH` at the discharge of the fixture's one stay discharged to `Death`, none
+for the others). `tests/test_runner_equivalence.py` checks that this build has the codes,
 descriptions and event counts that the removed `MEDS_extract-CDSL` runner built from the same fixture.
 `tests/test_run_with_enrichment.py` runs the full `meds-extract-run spec=CDSL`, offline against a tiny
 synthetic ontology pack, and checks that suMEDS adds titles and parents without changing the release's
@@ -383,6 +395,15 @@ baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so 
 
 Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
 newest release first.
+
+### Unreleased
+
+- **New code `MEDS_DEATH`** (MEDS `death_code`) at hospital discharge for every stay whose discharge destination
+    is `Death`: 550 events, one per such subject, in CDSL 1.0.0. `HOSPITAL_DISCHARGE//Death` and every other
+    event and code are unchanged, and `codes.parquet` gains the `MEDS_DEATH` row. A predicate or mapping that
+    counts deaths from `HOSPITAL_DISCHARGE//Death` and also from `MEDS_DEATH` (as alignEHR's curated CDSL
+    mapping would, [alignEHR#81](https://github.com/rvandewater/alignEHR/pull/81)) now counts each death twice;
+    use one of them. `tests/regression/full_summary_stats.json` regenerated.
 
 ### 0.2.0 (2026-11-20)
 

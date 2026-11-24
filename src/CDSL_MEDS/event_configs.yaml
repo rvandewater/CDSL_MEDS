@@ -79,6 +79,24 @@ patient_01:
           f"Hospital discharge; discharge destination: {$destin_discharge ?? 'UNKNOWN'} (CDSL
           patient_01.destin_discharge)"
 
+  death:
+    # MEDS_DEATH, the MEDS standard death code (`meds.death_code`), next to the discharge event
+    # above, which stays as it is: CDSL records death only as the hospital discharge destination
+    # `Death`, so the death is placed at that discharge. Any other destination gives a null time,
+    # which drops the row. `patient_id` is the admission and `patient_01` has one row per id, so a
+    # subject has at most one MEDS_DEATH (README "Death").
+    # cdsl-docs: patient_01 hospital discharge destination (destin_discharge) and date
+    # (discharge_date), https://physionet.org/content/covid-data-shared-learning/1.0.0/
+    code: MEDS_DEATH
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S" if $destin_discharge == 'Death'
+    _metadata:
+      _self:
+        description: >-
+          "Death (MEDS standard code): in-hospital death, recorded by CDSL as the hospital discharge
+          destination Death (patient_01.destin_discharge) and placed at the hospital discharge
+          (patient_01.discharge_date). CDSL has no follow-up after discharge, so a subject without
+          this code has no recorded in-hospital death; deaths after discharge are not recorded"
+
   icu_admission:
     code: ICU_ADMISSION
     time: $icu_date_in::?"%Y-%m-%d %H:%M:%S%.f"
