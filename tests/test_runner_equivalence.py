@@ -49,6 +49,15 @@ def test_same_codes_descriptions_and_event_counts(plain_output: Path, golden: di
         "events": 1,
     }
     expected["MEDS_DEATH"] = {"description": codes_by_name["MEDS_DEATH"], "events": 1}
+    # The two stay-level summaries moved from admission to discharge (#28), and their descriptions say so.
+    expected["MECHANICAL_VENTILATION"]["description"] = (
+        "Mechanical ventilation during the hospital stay (CDSL patient_01.mechvent is Yes); placed at "
+        "hospital discharge, not at the start of ventilation, which the release does not record"
+    )
+    expected["INPATIENT_DIAGNOSIS//X"]["description"] = (
+        "COVID-related diagnosis of the hospital admission: X (CDSL patient_01.diag_inpat); placed at "
+        "hospital discharge"
+    )
     # The only codes without events are unit-free stems (suMEDS's `sumeds_link_unit_siblings`, which
     # the runner predates): each is another code without its unit component.
     stems = set(codes["code"]) - set(counts)
