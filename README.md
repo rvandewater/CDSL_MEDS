@@ -410,6 +410,7 @@ newest release first.
     rows and code metadata are unchanged apart from the two descriptions, which now name the discharge; only the
     time moves. In CDSL 1.0.0 every stay has a `discharge_date`, so no event is dropped. To migrate, rebuild; a
     task that read either code at admission was reading the outcome.
+    `tests/regression/full_summary_stats.json` regenerated: only the data digests and the description lengths move.
 
 - **New code `MEDS_DEATH`** (MEDS `death_code`) at hospital discharge for every stay whose discharge destination
     is `Death`: 550 events, one per such subject, in CDSL 1.0.0. `HOSPITAL_DISCHARGE//Death` and every other
