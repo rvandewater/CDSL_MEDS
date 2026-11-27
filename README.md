@@ -402,7 +402,7 @@ baseline. A MEDS-Extract, suMEDS or polars upgrade can also move the output, so 
 Changes that alter codes, columns or metadata that cohorts, predicates or downstream mappings may depend on,
 newest release first.
 
-### Unreleased
+### 0.3.0 (2026-11-27)
 
 - **`MECHANICAL_VENTILATION` and `INPATIENT_DIAGNOSIS//…` move from hospital admission to hospital discharge**
     ([#28](https://github.com/rvandewater/CDSL_MEDS/issues/28)), as the coded diagnoses did in 0.2.0. Both describe
