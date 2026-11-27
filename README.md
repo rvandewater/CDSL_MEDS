@@ -111,10 +111,10 @@ cp1252.
 
 | Table                       | Event codes                                                                                                                                                       | Notes                                                                                     |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `patient_01`                | `HOSPITAL_ADMISSION`, `HOSPITAL_DISCHARGE//{destination}`, `ICU_ADMISSION`, `ICU_DISCHARGE`, `AGE_AT_ADMISSION`, `SEX//{sex}`, `INPATIENT_DIAGNOSIS//{diagnosis}` | Age is the `numeric_value`. Sex and inpatient diagnosis are placed at hospital admission. |
+| `patient_01`                | `HOSPITAL_ADMISSION`, `HOSPITAL_DISCHARGE//{destination}`, `ICU_ADMISSION`, `ICU_DISCHARGE`, `AGE_AT_ADMISSION`, `SEX//{sex}`, `INPATIENT_DIAGNOSIS//{diagnosis}` | Age is the `numeric_value`; sex at hospital admission, inpatient diagnosis at discharge.  |
 |                             | `EMERGENCY_DEPARTMENT_VISIT`, `EMERGENCY_DEPARTMENT//{department}`, `EMERGENCY_DIAGNOSIS//{diagnosis}`                                                            | Placed at the ED admission time.                                                          |
 |                             | `MEDS_DEATH`                                                                                                                                                      | At hospital discharge when the destination is `Death` (see [Data notes](#data-notes)).    |
-|                             | `MECHANICAL_VENTILATION`                                                                                                                                          | Emitted at hospital admission when `mechvent` is `Yes`.                                   |
+|                             | `MECHANICAL_VENTILATION`                                                                                                                                          | Emitted at hospital discharge when `mechvent` is `Yes`.                                   |
 |                             | `VITAL//{measurement}`                                                                                                                                            | The first and last ED vital signs, at their recorded times.                               |
 | `diagnosis_er_02`           | `DIAGNOSIS//ICD//10CM//{code}`, `PROCEDURE//ICD//10PCS//{code}`                                                                                                   | One event per populated diagnosis (12) and procedure (5) slot.                            |
 | `diagnosis_hosp_03`         | `DIAGNOSIS//ICD//10CM//{code}`, `PROCEDURE//ICD//10PCS//{code}`, `NEOPLASM//ICDO//3//{code}`                                                                      | One event per populated diagnosis (19), procedure (20) and neoplasm (6) slot.             |
@@ -313,6 +313,12 @@ none of these parents or the ICD-10-PCS descriptions.
     finalised. A stay without a `discharge_date` has no discharge event, and its rows in these two
     tables produce no event either; MEDS-Extract logs how many it drops per event
     (`dropped N/M rows with null time`).
+- **Stay-level summaries at discharge.** `patient_01.mechvent` ("ventilated during the stay") and
+    `patient_01.diag_inpat` (the COVID-related diagnosis of the admission) describe the whole stay and
+    carry no time of their own, so `MECHANICAL_VENTILATION` and `INPATIENT_DIAGNOSIS//…` are placed at
+    the hospital discharge, the earliest time they are known
+    ([#28](https://github.com/rvandewater/CDSL_MEDS/issues/28)). At admission they would tell a
+    prediction made during the stay how it ends. The release has no ventilation start time.
 - **One admission per subject.** `patient_id` is CDSL's admission identifier and becomes the MEDS
     `subject_id`.
 - **Death.** CDSL records death only as the hospital discharge destination `Death`
@@ -397,6 +403,14 @@ Changes that alter codes, columns or metadata that cohorts, predicates or downst
 newest release first.
 
 ### Unreleased
+
+- **`MECHANICAL_VENTILATION` and `INPATIENT_DIAGNOSIS//…` move from hospital admission to hospital discharge**
+    ([#28](https://github.com/rvandewater/CDSL_MEDS/issues/28)), as the coded diagnoses did in 0.2.0. Both describe
+    the whole stay, so at admission they leaked its course into every prediction made during it. Codes, values,
+    rows and code metadata are unchanged apart from the two descriptions, which now name the discharge; only the
+    time moves. In CDSL 1.0.0 every stay has a `discharge_date`, so no event is dropped. To migrate, rebuild; a
+    task that read either code at admission was reading the outcome.
+    `tests/regression/full_summary_stats.json` regenerated: only the data digests and the description lengths move.
 
 - **New code `MEDS_DEATH`** (MEDS `death_code`) at hospital discharge for every stay whose discharge destination
     is `Death`: 550 events, one per such subject, in CDSL 1.0.0. `HOSPITAL_DISCHARGE//Death` and every other

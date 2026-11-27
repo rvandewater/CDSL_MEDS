@@ -151,6 +151,20 @@ def test_coded_diagnoses_and_procedures_fall_at_discharge(plain_output):
     assert set(coded["time"].dt.strftime("%Y-%m-%d %H:%M:%S")) == {DISCHARGE_DATE}
 
 
+def test_stay_summaries_fall_at_discharge(plain_output):
+    """`MECHANICAL_VENTILATION` and `INPATIENT_DIAGNOSIS//…` describe the whole stay, so they are placed at
+    its hospital discharge, not at admission where they would leak the course of the stay (#28)."""
+    events = pl.concat([pl.read_parquet(fp) for fp in (plain_output / "data").rglob("*.parquet")])
+    summaries = events.filter(
+        (pl.col("code") == "MECHANICAL_VENTILATION") | pl.col("code").str.starts_with("INPATIENT_DIAGNOSIS//")
+    )
+    assert set(summaries["code"].str.split("//").list.first()) == {
+        "MECHANICAL_VENTILATION",
+        "INPATIENT_DIAGNOSIS",
+    }
+    assert set(summaries["time"].dt.strftime("%Y-%m-%d %H:%M:%S")) == {DISCHARGE_DATE}
+
+
 def test_latin1_sources_are_decoded(plain_output, raw_dir):
     """The fixture's Latin-1 tables are not UTF-8, yet their text arrives intact (`etl.encoding`)."""
     events = pl.concat([pl.read_parquet(fp) for fp in (plain_output / "data").rglob("*.parquet")])

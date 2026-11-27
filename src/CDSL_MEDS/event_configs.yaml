@@ -132,12 +132,16 @@ patient_01:
           f"Sex: {$sex} (CDSL patient_01.sex)"
 
   inpatient_diagnosis:
+    # A stay-level summary, assigned over the course of the stay, so it is placed at hospital
+    # discharge like the coded diagnoses below: at admission it would be visible to every prediction
+    # made during the stay (#28). Every patient_01 row has a discharge_date in CDSL 1.0.0.
     code: f"INPATIENT_DIAGNOSIS//{$diag_inpat}"
-    time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
     _metadata:
       _self:
         description: >-
-          f"COVID-related diagnosis of the hospital admission: {$diag_inpat} (CDSL patient_01.diag_inpat)"
+          f"COVID-related diagnosis of the hospital admission: {$diag_inpat} (CDSL patient_01.diag_inpat);
+          placed at hospital discharge"
 
   emergency_visit:
     code: EMERGENCY_DEPARTMENT_VISIT
@@ -167,14 +171,17 @@ patient_01:
           f"Diagnosis given in the emergency department: {$diag_emerg} (CDSL patient_01.diag_emerg)"
 
   mechanical_ventilation:
+    # "Ventilated at some point during the stay", with no start time anywhere in the release, so it is
+    # placed at hospital discharge, the earliest time it is known (#28). At admission it revealed the
+    # course of the stay to every prediction made during it.
     code: '"MECHANICAL_VENTILATION" if $mechvent == "Yes"'
-    time: $admission_d_inpat::?"%Y-%m-%d %H:%M:%S"
+    time: $discharge_date::?"%Y-%m-%d %H:%M:%S"
     # cdsl-docs: patient_01 mechvent; placement from this config
     _metadata:
       _self:
         description: >-
           "Mechanical ventilation during the hospital stay (CDSL patient_01.mechvent is Yes); placed at
-          hospital admission, not at the start of ventilation"
+          hospital discharge, not at the start of ventilation, which the release does not record"
 
   emergency_first_systolic_blood_pressure:
     code: '"VITAL//SYSTOLIC_BLOOD_PRESSURE"'
